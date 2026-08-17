@@ -1,0 +1,2767 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PC-6001 ハイパーグラフィックエディタ 簡易版</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Noto+Sans+JP:wght@400;700&display=swap');
+
+:root {
+  --bg: #0e0b07;
+  --panel: #161109;
+  --panel-header: #0a0800;
+  --panel-info: #0c0900;
+  --border: #2e2416;
+  --border2: #3e3020;
+  --amber: #ffb830;
+  --amber-dim: #996e1a;
+  --amber-bright: #ffd070;
+  --red: #ff4d2e;
+  --cyan: #30d4c8;
+  --text: #c8a870;
+  --text-dim: #5a4820;
+  --text-mid: #8a6830;
+  --btn: #1e1608;
+  --btn-hover: #2a2010;
+  --active-bg: #2a1e00;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ── */
+#header {
+  background: var(--panel-header);
+  border-bottom: 1px solid var(--border);
+  padding: 5px 12px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+#header h1 {
+  font-size: 13px;
+  color: var(--amber);
+  letter-spacing: 2px;
+  white-space: nowrap;
+  text-shadow: 0 0 8px rgba(255,184,48,0.4);
+}
+#header h1 em { color: var(--red); font-style: normal; }
+.hbar { flex: 1; }
+.ver-badge {
+  font-size: 10px;
+  color: var(--amber-dim);
+  letter-spacing: 1px;
+  border: 1px solid var(--amber-dim);
+  padding: 1px 7px;
+}
+.spec-badge {
+  font-size: 10px;
+  color: var(--cyan);
+  letter-spacing: 1px;
+  border: 1px solid var(--cyan);
+  padding: 1px 7px;
+  opacity: 0.7;
+}
+
+/* ── Mode tabs ── */
+.mode-tabs { display: flex; gap: 2px; }
+.mode-tab {
+  padding: 3px 8px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  transition: all 0.15s;
+  line-height: 1.4;
+  text-align: center;
+}
+.mode-tab:hover { background: var(--btn-hover); color: var(--text); }
+.mode-tab.active { background: var(--active-bg); border-color: var(--amber); color: var(--amber); }
+
+/* ── Mode info bar ── */
+#mode-info {
+  padding: 3px 10px;
+  font-size: 10px;
+  color: var(--text-mid);
+  background: var(--panel-info);
+  border-bottom: 1px solid var(--border);
+  letter-spacing: 0.5px;
+}
+
+/* ── Main ── */
+#main { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Toolbox ── */
+#toolbox {
+  width: 46px;
+  background: var(--panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 6px 0;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.tool-btn {
+  width: 34px; height: 34px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  cursor: pointer;
+  font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.tool-btn:hover { background: var(--btn-hover); border-color: var(--border2); color: var(--text); }
+.tool-btn.active { background: var(--active-bg); border-color: var(--amber); color: var(--amber); }
+.tool-sep { width: 26px; height: 1px; background: var(--border); margin: 3px 0; }
+
+/* ── Canvas area ── */
+#canvas-area {
+  flex: 1;
+  background: #080600;
+  overflow: auto;
+  padding: 16px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+}
+#canvas-area.stretch {
+  padding: 4px;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+}
+#canvas-wrap { position: relative; image-rendering: pixelated; display: inline-block; }
+#canvas-area.stretch #canvas-wrap {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+#main-canvas { display: block; image-rendering: pixelated; cursor: crosshair; }
+#canvas-area.stretch #main-canvas,
+#canvas-area.stretch #grid-canvas {
+  width: 100% !important;
+  height: 100% !important;
+}
+#grid-canvas {
+  position: absolute; top: 0; left: 0;
+  pointer-events: none;
+  image-rendering: pixelated;
+}
+
+/* ── Right panel ── */
+#right-panel {
+  width: 188px;
+  background: var(--panel);
+  border-left: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  flex-shrink: 0;
+  overflow-y: auto;
+}
+.rpanel-section {
+  border-bottom: 1px solid var(--border);
+  padding: 7px 8px;
+}
+.rpanel-label {
+  font-size: 10px;
+  color: var(--amber-dim);
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+/* Color set selector */
+#css-ctrl {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+.css-btn {
+  flex: 1;
+  padding: 3px 4px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 10px;
+  text-align: center;
+  transition: all 0.1s;
+}
+.css-btn.active { background: var(--active-bg); border-color: var(--amber); color: var(--amber); }
+
+/* Palette */
+#palette-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 3px;
+}
+.pal-cell {
+  aspect-ratio: 1;
+  border: 1px solid #333;
+  cursor: pointer;
+  transition: transform 0.1s;
+  position: relative;
+}
+.pal-cell:hover { transform: scale(1.12); z-index: 1; }
+.pal-cell.fg { outline: 2px solid var(--amber); outline-offset: 1px; }
+.pal-cell.bg { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.pal-cell.unavail { opacity: 0.18; cursor: not-allowed; }
+
+/* Color indicator */
+#color-indicator {
+  display: flex; gap: 6px; margin-top: 5px; align-items: center;
+}
+.ci-box { width: 20px; height: 20px; border: 1px solid #555; }
+.ci-label { font-size: 10px; color: var(--text-dim); }
+
+/* Attr display */
+#attr-info { font-size: 10px; color: var(--text-mid); line-height: 1.7; }
+
+/* Char edit */
+/* #char-grid-wrap は JS で mode に応じて表示制御 */
+#char-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1px;
+  background: #333;
+  border: 1px solid #333;
+}
+.cg-cell {
+  aspect-ratio: 1;
+  background: #000;
+  cursor: pointer;
+  transition: background 0.05s;
+}
+.cg-cell.on { background: var(--amber); }
+
+/* Zoom */
+#zoom-ctrl { display: flex; align-items: center; gap: 5px; }
+.zoom-btn {
+  width: 20px; height: 20px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.zoom-btn:hover { background: var(--btn-hover); }
+#zoom-val { font-size: 11px; min-width: 28px; text-align: center; }
+
+/* Position */
+#coord-info { font-size: 10px; color: var(--text-dim); line-height: 1.7; }
+
+/* Buttons */
+.action-btn {
+  width: 100%;
+  padding: 4px 7px;
+  background: var(--btn);
+  border: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  text-align: left;
+  transition: all 0.1s;
+  margin-bottom: 3px;
+}
+.action-btn:hover { background: var(--btn-hover); border-color: var(--border2); }
+.action-btn.primary { border-color: var(--amber-dim); color: var(--amber); }
+.action-btn.primary:hover { background: var(--active-bg); }
+
+/* Status bar */
+#statusbar {
+  height: 20px;
+  background: var(--panel-header);
+  border-top: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 10px;
+  gap: 14px;
+  font-size: 10px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+#statusbar span { color: var(--text); }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--border2); }
+
+/* 選択セルハイライト */
+#cell-highlight {
+  position: absolute;
+  pointer-events: none;
+  border: 2px solid var(--amber);
+  box-shadow: 0 0 6px rgba(255,184,48,0.6);
+  display: none;
+  z-index: 10;
+}
+
+/* 文字パレット */
+#char-palette-wrap { margin-top: 6px; }
+#char-palette-canvas {
+  display: block;
+  image-rendering: pixelated;
+  cursor: crosshair;
+  border: 1px solid var(--border);
+}
+#char-palette-code {
+  font-size: 10px;
+  color: var(--amber);
+  margin-top: 3px;
+  font-family: 'Share Tech Mono', monospace;
+  letter-spacing: 1px;
+}
+</style>
+</head>
+<body>
+
+<div id="header">
+  <h1>PC-<em>6001</em> ハイパーグラフィック 簡易版</h1>
+  <div class="mode-tabs">
+    <button class="mode-tab" data-mode="1">SCR1<br>32×16<br>キャラ</button>
+    <button class="mode-tab" data-mode="2">SCR2<br>64×48<br>セミ</button>
+    <button class="mode-tab active" data-mode="3">SCR3<br>128×192<br>4色</button>
+    <button class="mode-tab" data-mode="4">SCR4<br>256×192<br>2色</button>
+    <button class="mode-tab" data-mode="5">mkII<br>160×200<br>15色</button>
+  </div>
+  <div class="hbar"></div>
+  <span class="spec-badge">LIGHT UI</span>
+  <span class="ver-badge">v1.0 · 2026.8</span>
+  <span class="ver-badge" title="作者">© 楠史郎</span>
+</div>
+
+<div id="mode-info">—</div>
+
+<div id="main">
+  <div id="toolbox">
+    <button class="tool-btn active" data-tool="pen" title="ペン (P)">✏️</button>
+    <button class="tool-btn" data-tool="eraser" title="消しゴム (E)">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <path d="M4.5 14 L1.5 11 L8 4.5 L12.5 9 L6 15.5 Z" fill="#e8c080" stroke="#c09040" stroke-width="0.8"/>
+        <path d="M8 4.5 L11 1.5 L14.5 5 L11.5 8 Z" fill="#f0f0f0" stroke="#888" stroke-width="0.8"/>
+        <path d="M1.5 11 L4.5 14 L6 15.5 L3 12.5 Z" fill="#d06050" stroke="#a04030" stroke-width="0.6"/>
+      </svg>
+    </button>
+    <button class="tool-btn" data-tool="fill" title="塗りつぶし (F)">🪣</button>
+    <button class="tool-btn" data-tool="fillcheck" title="市松塗り (C) FG+BG">
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <rect x="1" y="1" width="7" height="7" fill="#e8c080"/>
+        <rect x="8" y="1" width="7" height="7" fill="#444"/>
+        <rect x="1" y="8" width="7" height="7" fill="#444"/>
+        <rect x="8" y="8" width="7" height="7" fill="#e8c080"/>
+      </svg>
+    </button>
+    <div class="tool-sep"></div>
+    <button class="tool-btn" data-tool="eyedropper" title="スポイト (I)">💧</button>
+  </div>
+
+  <div id="canvas-area">
+    <div id="canvas-wrap">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="grid-canvas"></canvas>
+      <div id="cell-highlight"></div>
+    </div>
+  </div>
+
+  <div id="right-panel">
+
+    <!-- Screen info -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">SCREEN INFO</div>
+      <div id="screen-info" style="font-size:10px;color:#888;line-height:1.7;"></div>
+    </div>
+
+    <!-- CSS selector (SCR3/4) -->
+    <div class="rpanel-section" id="css-section" style="display:none">
+      <div class="rpanel-label">COLOR SET (CSS)</div>
+      <div id="css-ctrl">
+        <button class="css-btn active" data-css="0">CSS=0<br><small>緑/黄/青/赤</small></button>
+        <button class="css-btn" data-css="1">CSS=1<br><small>白/ｼｱﾝ/ﾏｾﾞ/橙</small></button>
+      </div>
+    </div>
+
+    <!-- Palette -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">PALETTE (左:FG / 右:BG)</div>
+      <div id="palette-grid"></div>
+      <div id="color-indicator">
+        <div><div class="ci-label">FG</div><div class="ci-box" id="ci-fg"></div></div>
+        <div><div class="ci-label">BG</div><div class="ci-box" id="ci-bg"></div></div>
+      </div>
+    </div>
+
+    <!-- Attribute info -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">ATTRIBUTE</div>
+      <div id="attr-info">—</div>
+    </div>
+
+    <!-- Char/semi editor (SCR1/2用) -->
+    <div class="rpanel-section" id="char-grid-wrap" style="display:none;">
+      <div class="rpanel-label">CHAR EDIT</div>
+      <div id="char-input-wrap" style="display:none;">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px;">文字入力 → 自動で右へ進む</div>
+        <input id="char-input" type="text" maxlength="1"
+          style="width:100%;padding:4px 6px;background:var(--btn);border:1px solid var(--amber-dim);
+                 color:var(--amber);font-family:'Share Tech Mono',monospace;font-size:16px;
+                 text-align:center;outline:none;letter-spacing:2px;"
+          placeholder="A">
+        <div style="margin-top:4px;display:flex;gap:3px;">
+          <button class="action-btn" id="btn-char-left" style="flex:1;text-align:center;padding:3px;">←</button>
+          <button class="action-btn" id="btn-char-right" style="flex:1;text-align:center;padding:3px;">→</button>
+          <button class="action-btn" id="btn-char-del" style="flex:1;text-align:center;padding:3px;">DEL</button>
+        </div>
+        <div style="margin-top:5px;display:flex;gap:3px;align-items:center;">
+          <div style="font-size:10px;color:var(--text-dim);flex:none;">色:</div>
+          <button class="action-btn" id="btn-attr-css0" style="flex:1;text-align:center;padding:2px;font-size:10px;">白(CSS=0)</button>
+          <button class="action-btn" id="btn-attr-css1" style="flex:1;text-align:center;padding:2px;font-size:10px;">緑(CSS=1)</button>
+        </div>
+      </div>
+      <div id="char-palette-wrap" style="display:none;">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:3px;">文字パレット</div>
+        <canvas id="char-palette-canvas"></canvas>
+        <div id="char-palette-code">—</div>
+      </div>
+      <div id="char-grid"></div>
+      <div style="margin-top:4px;font-size:10px;color:var(--text-dim)" id="char-pos-label">— セルを選択してください</div>
+    </div>
+
+    <!-- Zoom -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">ZOOM</div>
+      <div id="zoom-ctrl">
+        <button class="zoom-btn" id="zoom-out">−</button>
+        <div id="zoom-val">×3</div>
+        <button class="zoom-btn" id="zoom-in">＋</button>
+      </div>
+    </div>
+
+    <!-- Position -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">POSITION</div>
+      <div id="coord-info">X:— Y:—<br>ATTR:—<br>VRAM:—</div>
+    </div>
+
+    <!-- Actions -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">ACTIONS</div>
+      <button class="action-btn" id="btn-clear">CLR — 全消去</button>
+      <button class="action-btn" id="btn-undo">↩ Undo (Ctrl+Z)</button>
+      <button class="action-btn" id="btn-redo">↪ Redo (Ctrl+Y)</button>
+    </div>
+
+    <!-- Export -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">EXPORT</div>
+      <div style="display:flex;gap:3px;margin-bottom:4px;">
+        <button class="action-btn" id="btn-png-scale-1" style="flex:1;text-align:center;padding:3px;">1×</button>
+        <button class="action-btn active" id="btn-png-scale-2" style="flex:1;text-align:center;padding:3px;">2×</button>
+        <button class="action-btn" id="btn-png-scale-4" style="flex:1;text-align:center;padding:3px;">4×</button>
+      </div>
+      <button class="action-btn primary" id="btn-png">PNG ダウンロード</button>
+      <button class="action-btn" id="btn-asm">ASM (VRAM)</button>
+      <div style="height:3px"></div>
+      <div class="rpanel-label">SAVE / LOAD (p6json互換)</div>
+      <button class="action-btn primary" id="btn-p6g-save">.p6json 保存</button>
+      <button class="action-btn" id="btn-p6g-load">.p6json/.p6g 読込</button>
+      <input type="file" id="p6g-input" accept=".p6json,.p6g,application/json" style="display:none">
+      <div style="height:3px"></div>
+      <div class="rpanel-label">IMAGE IMPORT</div>
+      <button class="action-btn" id="btn-load-img">画像読込 (PNG等)</button>
+      <input type="file" id="img-input" accept="image/*" style="display:none">
+      <!-- 簡易版ではガンマ/ディザUIを非表示（内部デフォルト使用） -->
+      <input type="range" id="gamma-slider" min="50" max="120" value="85" step="5" style="display:none;">
+      <span id="gamma-val" style="display:none;">0.85</span>
+      <button class="action-btn active" id="btn-dither-none" style="display:none;">なし</button>
+      <button class="action-btn" id="btn-dither-bayer" style="display:none;">Bayer</button>
+    </div>
+
+    <!-- View -->
+    <div class="rpanel-section">
+      <div class="rpanel-label">VIEW</div>
+      <button class="action-btn" id="btn-stretch">ストレッチ: OFF</button>
+      <button class="action-btn" id="btn-scanlines">走査線: OFF</button>
+      <button class="action-btn" id="btn-bleed">にじみ: OFF</button>
+      <div class="rpanel-label" style="margin-top:4px;">キャンバス外 背景色</div>
+      <div id="canvas-bg-colors" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:4px;">
+        <button type="button" class="cbg-btn active" data-cbg="#080600" title="黒" style="width:22px;height:22px;border:2px solid var(--amber);background:#080600;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#2a2a2a" title="暗灰" style="width:22px;height:22px;border:2px solid var(--border);background:#2a2a2a;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#ffffff" title="白" style="width:22px;height:22px;border:2px solid var(--border);background:#ffffff;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#cccccc" title="明灰" style="width:22px;height:22px;border:2px solid var(--border);background:#cccccc;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#cccc00" title="黄" style="width:22px;height:22px;border:2px solid var(--border);background:#cccc00;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#00cc00" title="緑" style="width:22px;height:22px;border:2px solid var(--border);background:#00cc00;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#0000cc" title="青" style="width:22px;height:22px;border:2px solid var(--border);background:#0000cc;cursor:pointer;padding:0;"></button>
+        <button type="button" class="cbg-btn" data-cbg="#cc0000" title="赤" style="width:22px;height:22px;border:2px solid var(--border);background:#cc0000;cursor:pointer;padding:0;"></button>
+      </div>
+      <div class="rpanel-label" style="margin-top:4px;">UIパネル テーマ</div>
+      <div id="ui-theme-btns" style="display:flex;flex-wrap:wrap;gap:3px;margin-bottom:4px;">
+        <button type="button" class="action-btn ui-theme-btn active" data-theme="amber" style="flex:1;min-width:40px;text-align:center;padding:3px;font-size:10px;">琥珀</button>
+        <button type="button" class="action-btn ui-theme-btn" data-theme="green" style="flex:1;min-width:40px;text-align:center;padding:3px;font-size:10px;">緑</button>
+        <button type="button" class="action-btn ui-theme-btn" data-theme="blue" style="flex:1;min-width:40px;text-align:center;padding:3px;font-size:10px;">青</button>
+        <button type="button" class="action-btn ui-theme-btn" data-theme="gray" style="flex:1;min-width:40px;text-align:center;padding:3px;font-size:10px;">灰</button>
+        <button type="button" class="action-btn ui-theme-btn" data-theme="light" style="flex:1;min-width:40px;text-align:center;padding:3px;font-size:10px;">明</button>
+      </div>
+      <button class="action-btn" id="btn-grid">グリッド: ON</button>
+      <button class="action-btn" id="btn-attr-grid">属性グリッド: ON</button>
+    </div>
+
+    <!-- About / Credits -->
+    <div class="rpanel-section" id="about-section">
+      <div class="rpanel-label">ABOUT</div>
+      <div style="font-size:10px;line-height:1.55;color:var(--text-mid);">
+        <div style="color:var(--amber);font-weight:bold;margin-bottom:3px;">PC-6001 ハイパーグラフィック<br>エディタ 簡易版</div>
+        <div>Version: <span style="color:var(--amber)">v1.0</span></div>
+        <div>© 2026 楠史郎</div>
+        <div>作成: 2026年8月</div>
+        <div style="margin-top:4px;">連絡先: <span style="color:var(--cyan)">@kshiroh</span> (X)</div>
+        <div style="margin-top:4px;color:var(--text-dim);word-break:break-all;">
+          公開URL:<br>
+          <span id="about-url">（公開後に記載）</span>
+        </div>
+        <div style="margin-top:6px;color:var(--text-dim);">
+          本ソフトは非公式のファンツールです。<br>
+          NEC公式製品ではありません。
+        </div>
+        <div style="margin-top:6px;color:var(--text-dim);">
+          利用条件:<br>
+          非営利・改変可・再配布時は出典明記。<br>
+          商用利用・権利侵害となる利用は不可。
+        </div>
+        <div style="margin-top:6px;color:var(--text-dim);">
+          CGROMフォント:<br>
+          eighttails / M+ Bitmap Font 由来
+        </div>
+        <div style="margin-top:6px;color:var(--text-dim);">
+          エディタ本体の著作権は作者に帰属します。<br>
+          自己責任のうえでご利用ください。
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="statusbar">
+  モード: <span id="sb-mode">SCREEN 3</span>
+  ツール: <span id="sb-tool">PEN</span>
+  Undo: <span id="sb-undo">0/50</span>
+  <div style="flex:1"></div>
+  <span id="sb-mode-tip" style="color:var(--text-dim);margin-right:12px;"></span>
+  左クリック=FG / 右クリック=BG / Ctrl+Z=Undo / Ctrl+Y=Redo
+</div>
+
+<script>
+'use strict';
+
+// CGROM — PC-6001互換フォントデータ
+// 作者: eighttails / M+ Bitmap Font ベース
+// ライセンス: M+ FONT LICENSE (THIRD_PARTY.md 参照)
+// 出典: https://eighttails.seesaa.net/article/289374186.html
+// 256文字 × 16バイト = 4096要素
+// アクセス: CGROM[charCode * 16 + row] → 8bitパターン (MSB=左)
+// ═══════════════════════════════════════════════════════
+const CGROM = [
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*   0 0x00 */
+  0x00,0x7E,0x42,0x42,0x7E,0x42,0x7E,0x42,0x42,0x86,0x00,0x00,0x00,0x00,0x00,0x00, /*   1 0x01 */
+  0x00,0x10,0x10,0x54,0x54,0x10,0x28,0x28,0x44,0x82,0x00,0x00,0x00,0x00,0x00,0x00, /*   2 0x02 */
+  0x00,0x10,0x12,0xF4,0x38,0x38,0x54,0x52,0x90,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /*   3 0x03 */
+  0x00,0x10,0x10,0xFE,0x10,0x10,0x38,0x54,0x92,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*   4 0x04 */
+  0x00,0x10,0x28,0x44,0x82,0x7C,0x10,0x38,0x54,0xFE,0x00,0x00,0x00,0x00,0x00,0x00, /*   5 0x05 */
+  0x00,0x10,0x10,0x10,0x7C,0x10,0x10,0x10,0x10,0xFE,0x00,0x00,0x00,0x00,0x00,0x00, /*   6 0x06 */
+  0x00,0x7E,0x42,0x42,0x42,0x7E,0x42,0x42,0x42,0x7E,0x00,0x00,0x00,0x00,0x00,0x00, /*   7 0x07 */
+  0x00,0x20,0x20,0x7E,0x88,0x7E,0x28,0xFE,0x08,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /*   8 0x08 */
+  0x00,0xFE,0x92,0x92,0x92,0xFE,0x82,0x82,0x82,0x86,0x00,0x00,0x00,0x00,0x00,0x00, /*   9 0x09 */
+  0x00,0x08,0xFC,0xA8,0xBE,0xE8,0xBE,0xB4,0xE4,0x0C,0x00,0x00,0x00,0x00,0x00,0x00, /*  10 0x0A */
+  0x00,0x18,0x48,0x44,0x82,0x00,0x7C,0x24,0x44,0x8C,0x00,0x00,0x00,0x00,0x00,0x00, /*  11 0x0B */
+  0x00,0x28,0xC8,0x5A,0x5A,0xE8,0x48,0x6A,0xC4,0x58,0x00,0x00,0x00,0x00,0x00,0x00, /*  12 0x0C */
+  0x00,0xFE,0x10,0x7C,0x44,0x44,0x7C,0x44,0x44,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /*  13 0x0D */
+  0x00,0x0C,0x70,0x10,0x10,0xFE,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  14 0x0E */
+  0x00,0xFE,0x10,0x10,0x1C,0x24,0x24,0x44,0x44,0x88,0x00,0x00,0x00,0x00,0x00,0x00, /*  15 0x0F */
+  0x00,0x00,0xFE,0x28,0x28,0x48,0x4A,0x8A,0x8C,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  16 0x10 */
+  0x18,0x18,0x18,0x18,0x18,0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  17 0x11 */
+  0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  18 0x12 */
+  0x18,0x18,0x18,0x18,0x18,0xF8,0xF8,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  19 0x13 */
+  0x18,0x18,0x18,0x18,0x18,0x1F,0x1F,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  20 0x14 */
+  0x18,0x18,0x18,0x18,0x18,0xFF,0xFF,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  21 0x15 */
+  0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  22 0x16 */
+  0x00,0x00,0x00,0x00,0x00,0xFF,0xFF,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  23 0x17 */
+  0x00,0x00,0x00,0x00,0x00,0x1F,0x1F,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  24 0x18 */
+  0x00,0x00,0x00,0x00,0x00,0xF8,0xF8,0x18,0x18,0x18,0x18,0x18,0x00,0x00,0x00,0x00, /*  25 0x19 */
+  0x18,0x18,0x18,0x18,0x18,0x1F,0x1F,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  26 0x1A */
+  0x18,0x18,0x18,0x18,0x18,0xF8,0xF8,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  27 0x1B */
+  0x00,0x00,0x82,0x44,0x28,0x10,0x28,0x44,0x82,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  28 0x1C */
+  0x00,0x10,0x10,0xFE,0x10,0x10,0x10,0x28,0x44,0x82,0x00,0x00,0x00,0x00,0x00,0x00, /*  29 0x1D */
+  0x00,0x10,0x10,0xFE,0x92,0x92,0xFE,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  30 0x1E */
+  0x00,0x10,0x10,0x10,0x54,0x54,0x92,0x92,0x10,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /*  31 0x1F */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  32 0x20 ' ' */
+  0x00,0x10,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  33 0x21 '!' */
+  0x00,0x50,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  34 0x22 '"' */
+  0x00,0x44,0x44,0xFE,0x44,0x44,0x44,0xFE,0x44,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /*  35 0x23 '#' */
+  0x00,0x10,0x38,0x54,0x50,0x38,0x14,0x54,0x38,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  36 0x24 '$' */
+  0x00,0x60,0x92,0x94,0x68,0x10,0x2C,0x52,0x92,0x0C,0x00,0x00,0x00,0x00,0x00,0x00, /*  37 0x25 '%' */
+  0x00,0x10,0x28,0x28,0x28,0x1E,0x34,0x4C,0x48,0x36,0x00,0x00,0x00,0x00,0x00,0x00, /*  38 0x26 '&' */
+  0x00,0x60,0x60,0x20,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  39 0x27 "'" */
+  0x00,0x04,0x08,0x08,0x10,0x10,0x10,0x08,0x08,0x04,0x00,0x00,0x00,0x00,0x00,0x00, /*  40 0x28 '(' */
+  0x00,0x40,0x20,0x20,0x10,0x10,0x10,0x20,0x20,0x40,0x00,0x00,0x00,0x00,0x00,0x00, /*  41 0x29 ')' */
+  0x00,0x00,0x00,0x10,0x54,0x38,0x10,0x38,0x54,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  42 0x2A '*' */
+  0x00,0x00,0x00,0x10,0x10,0x10,0x7C,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  43 0x2B '+' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x60,0x60,0x20,0x40,0x00,0x00,0x00,0x00, /*  44 0x2C ',' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x7C,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  45 0x2D '-' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x60,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /*  46 0x2E '.' */
+  0x00,0x00,0x00,0x00,0x04,0x08,0x10,0x20,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  47 0x2F '/' */
+  0x00,0x3C,0x42,0x46,0x4A,0x52,0x62,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  48 0x30 '0' */
+  0x00,0x08,0x18,0x28,0x08,0x08,0x08,0x08,0x08,0x3E,0x00,0x00,0x00,0x00,0x00,0x00, /*  49 0x31 '1' */
+  0x00,0x3C,0x42,0x42,0x02,0x04,0x18,0x20,0x40,0x7E,0x00,0x00,0x00,0x00,0x00,0x00, /*  50 0x32 '2' */
+  0x00,0x7E,0x02,0x04,0x18,0x04,0x02,0x02,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  51 0x33 '3' */
+  0x00,0x08,0x18,0x18,0x28,0x28,0x48,0x7E,0x08,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /*  52 0x34 '4' */
+  0x00,0x7E,0x40,0x40,0x7C,0x02,0x02,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  53 0x35 '5' */
+  0x00,0x3C,0x42,0x40,0x40,0x7C,0x42,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  54 0x36 '6' */
+  0x00,0x7E,0x02,0x02,0x04,0x08,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  55 0x37 '7' */
+  0x00,0x3C,0x42,0x42,0x42,0x3C,0x42,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  56 0x38 '8' */
+  0x00,0x3C,0x42,0x42,0x42,0x3E,0x02,0x02,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  57 0x39 '9' */
+  0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x18,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  58 0x3A ':' */
+  0x00,0x00,0x00,0x18,0x18,0x00,0x00,0x18,0x18,0x08,0x10,0x00,0x00,0x00,0x00,0x00, /*  59 0x3B ';' */
+  0x00,0x04,0x08,0x10,0x20,0x40,0x20,0x10,0x08,0x04,0x00,0x00,0x00,0x00,0x00,0x00, /*  60 0x3C '<' */
+  0x00,0x00,0x00,0x00,0x7C,0x00,0x00,0x7C,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  61 0x3D '=' */
+  0x00,0x40,0x20,0x10,0x08,0x04,0x08,0x10,0x20,0x40,0x00,0x00,0x00,0x00,0x00,0x00, /*  62 0x3E '>' */
+  0x00,0x38,0x44,0x44,0x04,0x08,0x10,0x10,0x00,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  63 0x3F '?' */
+  0x00,0x38,0x44,0x82,0x9A,0xAA,0xAA,0x9C,0x40,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  64 0x40 '@' */
+  0x00,0x18,0x24,0x42,0x42,0x42,0x7E,0x42,0x42,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /*  65 0x41 'A' */
+  0x00,0x7C,0x42,0x42,0x42,0x7C,0x42,0x42,0x42,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /*  66 0x42 'B' */
+  0x00,0x1C,0x22,0x40,0x40,0x40,0x40,0x40,0x22,0x1C,0x00,0x00,0x00,0x00,0x00,0x00, /*  67 0x43 'C' */
+  0x00,0x78,0x44,0x44,0x42,0x42,0x42,0x44,0x44,0x78,0x00,0x00,0x00,0x00,0x00,0x00, /*  68 0x44 'D' */
+  0x00,0x7E,0x40,0x40,0x40,0x7C,0x40,0x40,0x40,0x7E,0x00,0x00,0x00,0x00,0x00,0x00, /*  69 0x45 'E' */
+  0x00,0x7E,0x40,0x40,0x40,0x7C,0x40,0x40,0x40,0x40,0x00,0x00,0x00,0x00,0x00,0x00, /*  70 0x46 'F' */
+  0x00,0x3C,0x42,0x40,0x40,0x4E,0x42,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  71 0x47 'G' */
+  0x00,0x42,0x42,0x42,0x42,0x7E,0x42,0x42,0x42,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /*  72 0x48 'H' */
+  0x00,0x38,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /*  73 0x49 'I' */
+  0x00,0x3C,0x08,0x08,0x08,0x08,0x88,0x88,0x88,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /*  74 0x4A 'J' */
+  0x00,0x44,0x48,0x48,0x50,0x70,0x50,0x48,0x48,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /*  75 0x4B 'K' */
+  0x00,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x40,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /*  76 0x4C 'L' */
+  0x00,0x82,0xC6,0xAA,0x92,0x82,0x82,0x82,0x82,0x82,0x00,0x00,0x00,0x00,0x00,0x00, /*  77 0x4D 'M' */
+  0x00,0x42,0x42,0x62,0x52,0x4A,0x46,0x42,0x42,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /*  78 0x4E 'N' */
+  0x00,0x3C,0x42,0x42,0x42,0x42,0x42,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  79 0x4F 'O' */
+  0x00,0x7C,0x42,0x42,0x42,0x42,0x7C,0x40,0x40,0x40,0x00,0x00,0x00,0x00,0x00,0x00, /*  80 0x50 'P' */
+  0x00,0x3C,0x42,0x42,0x42,0x42,0x42,0x42,0x4A,0x3C,0x02,0x00,0x00,0x00,0x00,0x00, /*  81 0x51 'Q' */
+  0x00,0x7C,0x42,0x42,0x42,0x7C,0x50,0x48,0x44,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /*  82 0x52 'R' */
+  0x00,0x3C,0x42,0x42,0x40,0x3C,0x02,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  83 0x53 'S' */
+  0x00,0x7C,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  84 0x54 'T' */
+  0x00,0x42,0x42,0x42,0x42,0x42,0x42,0x42,0x42,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /*  85 0x55 'U' */
+  0x00,0x44,0x44,0x44,0x28,0x28,0x28,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  86 0x56 'V' */
+  0x00,0x92,0x92,0x92,0x92,0x92,0xAA,0xAA,0x44,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /*  87 0x57 'W' */
+  0x00,0x82,0x82,0x44,0x28,0x10,0x28,0x44,0x82,0x82,0x00,0x00,0x00,0x00,0x00,0x00, /*  88 0x58 'X' */
+  0x00,0x82,0x82,0x44,0x28,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  89 0x59 'Y' */
+  0x00,0x7C,0x04,0x08,0x08,0x10,0x20,0x20,0x40,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /*  90 0x5A 'Z' */
+  0x00,0x0C,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x0C,0x00,0x00,0x00,0x00,0x00,0x00, /*  91 0x5B '[' */
+  0x00,0x44,0x44,0x28,0x10,0x7C,0x10,0x7C,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /*  92 0x5C '\' */
+  0x00,0x60,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /*  93 0x5D ']' */
+  0x00,0x10,0x28,0x44,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  94 0x5E '^' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00, /*  95 0x5F '_' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /*  96 0x60 '`' */
+  0x00,0x00,0x00,0x00,0x38,0x44,0x3C,0x44,0x44,0x3A,0x00,0x00,0x00,0x00,0x00,0x00, /*  97 0x61 'a' */
+  0x00,0x40,0x40,0x40,0x40,0x78,0x44,0x44,0x44,0x78,0x00,0x00,0x00,0x00,0x00,0x00, /*  98 0x62 'b' */
+  0x00,0x00,0x00,0x00,0x38,0x44,0x40,0x40,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /*  99 0x63 'c' */
+  0x00,0x00,0x04,0x04,0x04,0x3C,0x44,0x44,0x44,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 100 0x64 'd' */
+  0x00,0x00,0x00,0x00,0x38,0x44,0x7C,0x40,0x40,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 101 0x65 'e' */
+  0x00,0x08,0x10,0x10,0x10,0x7C,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 102 0x66 'f' */
+  0x00,0x00,0x00,0x00,0x3C,0x44,0x44,0x44,0x44,0x3C,0x04,0x38,0x00,0x00,0x00,0x00, /* 103 0x67 'g' */
+  0x00,0x40,0x40,0x40,0x40,0x78,0x44,0x44,0x44,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /* 104 0x68 'h' */
+  0x00,0x00,0x10,0x00,0x10,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 105 0x69 'i' */
+  0x00,0x00,0x08,0x00,0x08,0x08,0x08,0x08,0x08,0x08,0x08,0x70,0x00,0x00,0x00,0x00, /* 106 0x6A 'j' */
+  0x00,0x40,0x40,0x44,0x48,0x50,0x60,0x50,0x48,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /* 107 0x6B 'k' */
+  0x00,0x30,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 108 0x6C 'l' */
+  0x00,0x00,0x00,0x00,0xFC,0x92,0x92,0x92,0x92,0x92,0x00,0x00,0x00,0x00,0x00,0x00, /* 109 0x6D 'm' */
+  0x00,0x00,0x00,0x00,0x78,0x44,0x44,0x44,0x44,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /* 110 0x6E 'n' */
+  0x00,0x00,0x00,0x00,0x38,0x44,0x44,0x44,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 111 0x6F 'o' */
+  0x00,0x00,0x00,0x00,0x78,0x44,0x44,0x44,0x78,0x40,0x40,0x40,0x00,0x00,0x00,0x00, /* 112 0x70 'p' */
+  0x00,0x00,0x00,0x00,0x3C,0x44,0x44,0x44,0x3C,0x04,0x04,0x04,0x00,0x00,0x00,0x00, /* 113 0x71 'q' */
+  0x00,0x00,0x00,0x00,0x58,0x24,0x20,0x20,0x20,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 114 0x72 'r' */
+  0x00,0x00,0x00,0x00,0x38,0x44,0x20,0x18,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 115 0x73 's' */
+  0x00,0x20,0x20,0x20,0x78,0x20,0x20,0x20,0x24,0x18,0x00,0x00,0x00,0x00,0x00,0x00, /* 116 0x74 't' */
+  0x00,0x00,0x00,0x00,0x44,0x44,0x44,0x44,0x44,0x3A,0x00,0x00,0x00,0x00,0x00,0x00, /* 117 0x75 'u' */
+  0x00,0x00,0x00,0x00,0x44,0x44,0x28,0x28,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 118 0x76 'v' */
+  0x00,0x00,0x00,0x00,0x54,0x54,0x54,0x54,0x28,0x28,0x00,0x00,0x00,0x00,0x00,0x00, /* 119 0x77 'w' */
+  0x00,0x00,0x00,0x00,0x44,0x28,0x10,0x10,0x28,0x44,0x00,0x00,0x00,0x00,0x00,0x00, /* 120 0x78 'x' */
+  0x00,0x00,0x00,0x00,0x44,0x44,0x44,0x28,0x28,0x10,0x10,0x60,0x00,0x00,0x00,0x00, /* 121 0x79 'y' */
+  0x00,0x00,0x00,0x00,0x7C,0x04,0x08,0x10,0x20,0x40,0x7C,0x00,0x00,0x00,0x00,0x00, /* 122 0x7A 'z' */
+  0x00,0x0C,0x10,0x10,0x10,0x10,0x20,0x10,0x10,0x10,0x10,0x0C,0x00,0x00,0x00,0x00, /* 123 0x7B '{' */
+  0x00,0x10,0x10,0x10,0x10,0x10,0x00,0x10,0x10,0x10,0x10,0x10,0x00,0x00,0x00,0x00, /* 124 0x7C '|' */
+  0x00,0x60,0x10,0x10,0x10,0x10,0x08,0x10,0x10,0x10,0x10,0x60,0x00,0x00,0x00,0x00, /* 125 0x7D '}' */
+  0x00,0x00,0x00,0x00,0x00,0x60,0x92,0x0C,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 126 0x7E '~' */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 127 0x7F */
+  0x00,0x10,0x38,0x38,0x7C,0xFE,0xFE,0x7C,0x10,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 128 0x80 */
+  0x00,0x6C,0xFE,0xFE,0xFE,0x7C,0x7C,0x38,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 129 0x81 */
+  0x00,0x10,0x38,0x38,0x54,0xFE,0xFE,0x54,0x10,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 130 0x82 */
+  0x00,0x10,0x38,0x38,0x7C,0xFE,0x7C,0x38,0x38,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 131 0x83 */
+  0x00,0x00,0x38,0x44,0x82,0x82,0x82,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 132 0x84 */
+  0x00,0x00,0x38,0x7C,0xFE,0xFE,0xFE,0x7C,0x38,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 133 0x85 */
+  0x00,0x10,0x7C,0x20,0x20,0x5C,0x38,0x48,0x40,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 134 0x86 */
+  0x00,0x00,0x00,0x10,0x7C,0x10,0x38,0x7C,0x5C,0x74,0x00,0x00,0x00,0x00,0x00,0x00, /* 135 0x87 */
+  0x00,0x00,0x00,0x00,0x48,0x44,0x44,0x44,0x44,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 136 0x88 */
+  0x00,0x00,0x00,0x30,0x00,0x30,0x48,0x08,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 137 0x89 */
+  0x00,0x00,0x00,0x10,0x00,0x78,0x08,0x10,0x28,0x4C,0x00,0x00,0x00,0x00,0x00,0x00, /* 138 0x8A */
+  0x00,0x00,0x00,0x10,0x7A,0x10,0x38,0x54,0x54,0x68,0x00,0x00,0x00,0x00,0x00,0x00, /* 139 0x8B */
+  0x00,0x00,0x00,0x28,0x7C,0x24,0x28,0x20,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 140 0x8C */
+  0x00,0x00,0x00,0x08,0x5C,0x6A,0x4A,0x5C,0x08,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 141 0x8D */
+  0x00,0x00,0x00,0x10,0x1C,0x10,0x30,0x58,0x54,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 142 0x8E */
+  0x00,0x00,0x00,0x00,0x78,0x04,0x04,0x04,0x18,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 143 0x8F */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 144 0x90 */
+  0x00,0x20,0xFE,0x24,0x3C,0x66,0xAA,0xB2,0xB2,0x64,0x00,0x00,0x00,0x00,0x00,0x00, /* 145 0x91 */
+  0x00,0x00,0x00,0x84,0x82,0x82,0x82,0x90,0x60,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 146 0x92 */
+  0x00,0x30,0x08,0x00,0x78,0x84,0x04,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 147 0x93 */
+  0x00,0x20,0x10,0x00,0xFC,0x08,0x10,0x28,0x48,0x8E,0x00,0x00,0x00,0x00,0x00,0x00, /* 148 0x94 */
+  0x00,0x10,0x14,0xFA,0x10,0x3C,0x52,0x92,0x92,0xE4,0x00,0x00,0x00,0x00,0x00,0x00, /* 149 0x95 */
+  0x00,0x28,0x24,0xFA,0x24,0x24,0x44,0x44,0x44,0x8C,0x00,0x00,0x00,0x00,0x00,0x00, /* 150 0x96 */
+  0x00,0x10,0xFC,0x10,0xFE,0x08,0x08,0x80,0x40,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 151 0x97 */
+  0x00,0x08,0x10,0x20,0x40,0x80,0x40,0x20,0x10,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /* 152 0x98 */
+  0x00,0x04,0x84,0x84,0xBE,0x84,0x84,0x84,0x84,0x88,0x00,0x00,0x00,0x00,0x00,0x00, /* 153 0x99 */
+  0x00,0x00,0xFC,0x02,0x00,0x00,0x00,0x00,0x80,0xFE,0x00,0x00,0x00,0x00,0x00,0x00, /* 154 0x9A */
+  0x00,0x10,0xFE,0x08,0x08,0x04,0x04,0x80,0x40,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 155 0x9B */
+  0x00,0x40,0x40,0x40,0x40,0x40,0x42,0x42,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 156 0x9C */
+  0x00,0x08,0x08,0xFE,0x08,0x18,0x28,0x28,0x18,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 157 0x9D */
+  0x00,0x04,0x44,0x44,0xFE,0x44,0x4C,0x40,0x40,0x3E,0x00,0x00,0x00,0x00,0x00,0x00, /* 158 0x9E */
+  0x00,0x7C,0x04,0x08,0xFE,0x10,0x20,0x20,0x20,0x1C,0x00,0x00,0x00,0x00,0x00,0x00, /* 159 0x9F */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 160 0xA0 */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x60,0x90,0x90,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /* 161 0xA1 */
+  0x00,0x0E,0x08,0x08,0x08,0x08,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 162 0xA2 */
+  0x00,0x00,0x00,0x00,0x00,0x10,0x10,0x10,0x10,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /* 163 0xA3 */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x40,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 164 0xA4 */
+  0x00,0x00,0x00,0x00,0x00,0x10,0x38,0x10,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 165 0xA5 */
+  0x00,0x00,0x00,0x7E,0x02,0x02,0x7E,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 166 0xA6 */
+  0x00,0x00,0x00,0x00,0x7C,0x04,0x14,0x18,0x10,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 167 0xA7 */
+  0x00,0x00,0x00,0x00,0x08,0x08,0x10,0x30,0x50,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 168 0xA8 */
+  0x00,0x00,0x00,0x00,0x10,0x7C,0x44,0x04,0x08,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 169 0xA9 */
+  0x00,0x00,0x00,0x00,0x00,0x7C,0x10,0x10,0x10,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /* 170 0xAA */
+  0x00,0x00,0x00,0x00,0x08,0x7C,0x08,0x18,0x28,0x48,0x00,0x00,0x00,0x00,0x00,0x00, /* 171 0xAB */
+  0x00,0x00,0x00,0x00,0x20,0x7E,0x22,0x14,0x10,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /* 172 0xAC */
+  0x00,0x00,0x00,0x00,0x00,0x38,0x08,0x08,0x08,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /* 173 0xAD */
+  0x00,0x00,0x00,0x00,0x00,0x3C,0x04,0x3C,0x04,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 174 0xAE */
+  0x00,0x00,0x00,0x00,0x00,0x54,0x54,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 175 0xAF */
+  0x00,0x00,0x00,0x00,0x00,0x80,0x7E,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 176 0xB0 */
+  0x00,0x00,0x7E,0x02,0x02,0x14,0x10,0x10,0x10,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 177 0xB1 */
+  0x00,0x00,0x02,0x04,0x08,0x18,0x28,0x48,0x08,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /* 178 0xB2 */
+  0x00,0x10,0x10,0x7E,0x42,0x42,0x04,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 179 0xB3 */
+  0x00,0x00,0x00,0x7C,0x10,0x10,0x10,0x10,0xFE,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 180 0xB4 */
+  0x00,0x04,0x04,0x7E,0x0C,0x14,0x14,0x24,0x24,0x4C,0x00,0x00,0x00,0x00,0x00,0x00, /* 181 0xB5 */
+  0x00,0x10,0x10,0x7E,0x12,0x12,0x22,0x22,0x22,0x46,0x00,0x00,0x00,0x00,0x00,0x00, /* 182 0xB6 */
+  0x00,0x10,0x10,0x7E,0x10,0x10,0x7E,0x08,0x08,0x08,0x00,0x00,0x00,0x00,0x00,0x00, /* 183 0xB7 */
+  0x00,0x20,0x20,0x3E,0x22,0x42,0x04,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 184 0xB8 */
+  0x00,0x20,0x20,0x3E,0x28,0x48,0x08,0x08,0x10,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /* 185 0xB9 */
+  0x00,0x00,0x00,0x7E,0x02,0x02,0x02,0x02,0x7E,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 186 0xBA */
+  0x00,0x24,0x24,0x7E,0x24,0x24,0x04,0x08,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 187 0xBB */
+  0x00,0x00,0x70,0x00,0x02,0x72,0x02,0x02,0x04,0x78,0x00,0x00,0x00,0x00,0x00,0x00, /* 188 0xBC */
+  0x00,0x00,0x7C,0x04,0x04,0x04,0x08,0x14,0x22,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /* 189 0xBD */
+  0x00,0x20,0x20,0x7E,0x22,0x22,0x24,0x20,0x20,0x1E,0x00,0x00,0x00,0x00,0x00,0x00, /* 190 0xBE */
+  0x00,0x00,0x42,0x42,0x42,0x22,0x02,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 191 0xBF */
+  0x00,0x10,0x10,0x3E,0x22,0x42,0x1A,0x04,0x08,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /* 192 0xC0 */
+  0x00,0x00,0x0C,0x70,0x10,0x10,0xFE,0x10,0x10,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /* 193 0xC1 */
+  0x00,0x00,0x52,0x52,0x52,0x02,0x02,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 194 0xC2 */
+  0x00,0x00,0x7E,0x00,0x00,0x7E,0x08,0x08,0x10,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 195 0xC3 */
+  0x00,0x20,0x20,0x20,0x20,0x38,0x24,0x20,0x20,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 196 0xC4 */
+  0x00,0x08,0x08,0x08,0x7E,0x08,0x08,0x10,0x10,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /* 197 0xC5 */
+  0x00,0x00,0x00,0x3C,0x00,0x00,0x00,0x00,0x7E,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 198 0xC6 */
+  0x00,0x00,0x7E,0x02,0x02,0x14,0x14,0x08,0x14,0x62,0x00,0x00,0x00,0x00,0x00,0x00, /* 199 0xC7 */
+  0x00,0x10,0x10,0x7E,0x04,0x08,0x18,0x34,0x52,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 200 0xC8 */
+  0x00,0x00,0x04,0x04,0x04,0x04,0x04,0x08,0x10,0x60,0x00,0x00,0x00,0x00,0x00,0x00, /* 201 0xC9 */
+  0x00,0x00,0x20,0x24,0x24,0x22,0x42,0x42,0x42,0x42,0x00,0x00,0x00,0x00,0x00,0x00, /* 202 0xCA */
+  0x00,0x00,0x40,0x40,0x4E,0x70,0x40,0x40,0x40,0x3E,0x00,0x00,0x00,0x00,0x00,0x00, /* 203 0xCB */
+  0x00,0x00,0x7E,0x02,0x02,0x02,0x02,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 204 0xCC */
+  0x00,0x00,0x00,0x00,0x30,0x48,0x84,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 205 0xCD */
+  0x00,0x10,0x10,0x10,0x7C,0x10,0x10,0x54,0x92,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 206 0xCE */
+  0x00,0x00,0x00,0x7E,0x02,0x02,0x24,0x18,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 207 0xCF */
+  0x00,0x00,0x30,0x0C,0x00,0x30,0x08,0x00,0x70,0x0C,0x00,0x00,0x00,0x00,0x00,0x00, /* 208 0xD0 */
+  0x00,0x00,0x10,0x10,0x10,0x20,0x24,0x44,0x4C,0xF2,0x00,0x00,0x00,0x00,0x00,0x00, /* 209 0xD1 */
+  0x00,0x00,0x04,0x04,0x08,0x28,0x10,0x18,0x24,0x40,0x00,0x00,0x00,0x00,0x00,0x00, /* 210 0xD2 */
+  0x00,0x00,0x7C,0x20,0x20,0xFE,0x20,0x20,0x20,0x1C,0x00,0x00,0x00,0x00,0x00,0x00, /* 211 0xD3 */
+  0x00,0x20,0x20,0xFE,0x22,0x22,0x24,0x10,0x10,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 212 0xD4 */
+  0x00,0x00,0x00,0x78,0x08,0x08,0x08,0x08,0xFE,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 213 0xD5 */
+  0x00,0x00,0x00,0x7E,0x02,0x02,0x7E,0x02,0x02,0x7E,0x00,0x00,0x00,0x00,0x00,0x00, /* 214 0xD6 */
+  0x00,0x00,0x3C,0x00,0x7E,0x02,0x02,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 215 0xD7 */
+  0x00,0x00,0x44,0x44,0x44,0x44,0x44,0x08,0x08,0x10,0x00,0x00,0x00,0x00,0x00,0x00, /* 216 0xD8 */
+  0x00,0x00,0x28,0x28,0x28,0x28,0x2A,0x2A,0x4C,0x48,0x00,0x00,0x00,0x00,0x00,0x00, /* 217 0xD9 */
+  0x00,0x00,0x40,0x40,0x40,0x40,0x44,0x44,0x48,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /* 218 0xDA */
+  0x00,0x00,0x00,0x7E,0x42,0x42,0x42,0x42,0x7E,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 219 0xDB */
+  0x00,0x00,0x7E,0x42,0x42,0x42,0x02,0x04,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 220 0xDC */
+  0x00,0x00,0x00,0x60,0x12,0x02,0x02,0x04,0x08,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /* 221 0xDD */
+  0x20,0x90,0x40,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 222 0xDE */
+  0x60,0x90,0x90,0x60,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 223 0xDF */
+  0x00,0x20,0x20,0xFC,0x20,0x4E,0x40,0x80,0x90,0x8E,0x00,0x00,0x00,0x00,0x00,0x00, /* 224 0xE0 */
+  0x00,0x10,0x10,0xFC,0x20,0x3C,0x62,0x02,0x02,0x1C,0x00,0x00,0x00,0x00,0x00,0x00, /* 225 0xE1 */
+  0x00,0x00,0x00,0xFC,0x02,0x02,0x02,0x02,0x1C,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 226 0xE2 */
+  0x00,0x00,0x00,0xFE,0x08,0x10,0x20,0x20,0x20,0x1C,0x00,0x00,0x00,0x00,0x00,0x00, /* 227 0xE3 */
+  0x00,0x20,0x20,0x2C,0x30,0x40,0x80,0x80,0x80,0x7C,0x00,0x00,0x00,0x00,0x00,0x00, /* 228 0xE4 */
+  0x00,0x20,0x24,0xFA,0x40,0x48,0x88,0x9C,0x2A,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 229 0xE5 */
+  0x00,0x00,0x80,0x9E,0x80,0x80,0x80,0x80,0x90,0xCE,0x00,0x00,0x00,0x00,0x00,0x00, /* 230 0xE6 */
+  0x00,0x00,0x48,0x48,0x7C,0xCA,0xD2,0xBE,0xAA,0x4E,0x00,0x00,0x00,0x00,0x00,0x00, /* 231 0xE7 */
+  0x00,0x20,0x20,0xEC,0x32,0x22,0x62,0xA6,0x2A,0x2E,0x00,0x00,0x00,0x00,0x00,0x00, /* 232 0xE8 */
+  0x00,0x00,0x00,0x7C,0x92,0x92,0x92,0x92,0x62,0x0C,0x00,0x00,0x00,0x00,0x00,0x00, /* 233 0xE9 */
+  0x00,0x04,0x84,0x84,0xBE,0x84,0x84,0x9C,0xA4,0xBA,0x00,0x00,0x00,0x00,0x00,0x00, /* 234 0xEA */
+  0x00,0x00,0xE0,0x44,0x46,0x44,0x44,0x44,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 235 0xEB */
+  0x00,0x00,0x38,0x08,0x00,0x10,0x54,0x8A,0x8A,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 236 0xEC */
+  0x00,0x00,0x00,0x00,0x00,0x30,0x48,0x84,0x02,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 237 0xED */
+  0x00,0x00,0xBE,0x84,0x84,0xBE,0x84,0x9C,0xA4,0xBA,0x00,0x00,0x00,0x00,0x00,0x00, /* 238 0xEE */
+  0x00,0x10,0x10,0xFE,0x10,0xFE,0x10,0x7C,0x92,0x70,0x00,0x00,0x00,0x00,0x00,0x00, /* 239 0xEF */
+  0x00,0x00,0x70,0x14,0x14,0x7C,0x96,0x94,0xA4,0xC8,0x00,0x00,0x00,0x00,0x00,0x00, /* 240 0xF0 */
+  0x00,0x20,0x20,0xFC,0x22,0x20,0x60,0xA0,0xE2,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 241 0xF1 */
+  0x00,0x08,0x48,0x48,0x7C,0xEA,0xAA,0x92,0x92,0x64,0x00,0x00,0x00,0x00,0x00,0x00, /* 242 0xF2 */
+  0x00,0x40,0x40,0xFC,0x40,0xFC,0x40,0x40,0x44,0x38,0x00,0x00,0x00,0x00,0x00,0x00, /* 243 0xF3 */
+  0x00,0x48,0x48,0xFC,0x42,0x42,0x4C,0x20,0x20,0x20,0x00,0x00,0x00,0x00,0x00,0x00, /* 244 0xF4 */
+  0x00,0x08,0x08,0xBE,0xCA,0x8A,0x8A,0xBC,0x08,0x30,0x00,0x00,0x00,0x00,0x00,0x00, /* 245 0xF5 */
+  0x00,0x10,0x10,0x1C,0x10,0x10,0x10,0x7C,0x92,0xF0,0x00,0x00,0x00,0x00,0x00,0x00, /* 246 0xF6 */
+  0x00,0x30,0x08,0x40,0x40,0x7C,0x82,0x02,0x02,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 247 0xF7 */
+  0x00,0x00,0x42,0x42,0x42,0x42,0x62,0x02,0x04,0x18,0x00,0x00,0x00,0x00,0x00,0x00, /* 248 0xF8 */
+  0x00,0x00,0x7C,0x08,0x10,0x3C,0x42,0xA2,0x52,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 249 0xF9 */
+  0x00,0x20,0x20,0x20,0xEC,0x34,0x34,0x64,0xA4,0x26,0x00,0x00,0x00,0x00,0x00,0x00, /* 250 0xFA */
+  0x00,0x00,0x7C,0x08,0x10,0x3C,0x42,0x82,0x02,0x3C,0x00,0x00,0x00,0x00,0x00,0x00, /* 251 0xFB */
+  0x00,0x20,0x20,0xEC,0x32,0x22,0x62,0xA2,0x22,0x2C,0x00,0x00,0x00,0x00,0x00,0x00, /* 252 0xFC */
+  0x00,0x20,0x20,0x20,0x40,0x40,0x70,0x50,0x8A,0x8C,0x00,0x00,0x00,0x00,0x00,0x00, /* 253 0xFD */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 254 0xFE */
+  0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00, /* 255 0xFF */
+];
+
+// ═══════════════════════════════════════════════════════
+// 実機仕様定数
+// 出典: https://000.la.coocan.jp/p6/tech.html#vram
+// ═══════════════════════════════════════════════════════
+
+// アトリビュート値 (実機VRAM先頭512バイトに相当)
+const ATTR = {
+  SCR1: 0x24, // 外部フォント キャラクタモード (CSS=0, INV=0)
+  SCR2: 0x60, // 64x48セミグラフィック CSS=0
+  SCR3_CSS0: 0x8C, // 128x192 カラーグラフィック CSS=0 (緑/黄/青/赤)
+  SCR3_CSS1: 0x8E, // 128x192 カラーグラフィック CSS=1 (白/シアン/マゼンタ/橙)
+  SCR4_CSS0: 0xDC, // 256x192 モノクログラフィック CSS=0 (黒/緑)
+  SCR4_CSS1: 0xDE, // 256x192 モノクログラフィック CSS=1 (黒/白)
+};
+
+// 実機パレット — SCREENモード別・CSSビット別
+// SCREEN 1: キャラクタ色 (mkII以降準拠)
+const PAL_SCR1 = [
+  { name:'白',   rgb:'#ffffff' },  // CSS=0,INV=0
+  { name:'白反転', rgb:'#000000' }, // CSS=0,INV=1
+  { name:'緑',   rgb:'#00cc00' },  // CSS=1,INV=0
+  { name:'緑反転', rgb:'#003300' }, // CSS=1,INV=1
+];
+
+// SCREEN 2: セミグラフィック 8色+黒
+const PAL_SCR2_CSS0 = [
+  { name:'黒',   rgb:'#000000' },
+  { name:'緑',   rgb:'#00cc00' },
+  { name:'黄',   rgb:'#cccc00' },
+  { name:'青',   rgb:'#0000cc' },
+  { name:'赤',   rgb:'#cc0000' },
+];
+const PAL_SCR2_CSS1 = [
+  { name:'黒',      rgb:'#000000' },
+  { name:'白',      rgb:'#cccccc' },
+  { name:'シアン',  rgb:'#00cccc' },
+  { name:'マゼンタ',rgb:'#cc00cc' },
+  { name:'橙',      rgb:'#cc6600' },
+];
+
+// SCREEN 3: 128x192 4色グラフィック
+const PAL_SCR3_CSS0 = [
+  { name:'緑', rgb:'#00cc00' },
+  { name:'黄', rgb:'#cccc00' },
+  { name:'青', rgb:'#0000cc' },
+  { name:'赤', rgb:'#cc0000' },
+];
+const PAL_SCR3_CSS1 = [
+  { name:'白',      rgb:'#cccccc' },
+  { name:'シアン',  rgb:'#00cccc' },
+  { name:'マゼンタ',rgb:'#cc00cc' },
+  { name:'橙',      rgb:'#cc6600' },
+];
+
+// SCREEN 4: 256x192 2色グラフィック
+const PAL_SCR4_CSS0 = [
+  { name:'黒', rgb:'#000000' },
+  { name:'緑', rgb:'#00cc00' },
+];
+const PAL_SCR4_CSS1 = [
+  { name:'黒', rgb:'#000000' },
+  { name:'白', rgb:'#cccccc' },
+];
+
+// PC-6001mkII Mode5 SCREEN3: 160x200 15色（16色パレット）
+// 実機は2プレーン×2bit=16色。簡易版では1ドット1バイトで保持
+const PAL_MK2_15 = [
+  { name:'黒',     rgb:'#000000' },
+  { name:'青',     rgb:'#0000cc' },
+  { name:'赤',     rgb:'#cc0000' },
+  { name:'マゼンタ',rgb:'#cc00cc' },
+  { name:'緑',     rgb:'#00cc00' },
+  { name:'シアン', rgb:'#00cccc' },
+  { name:'黄',     rgb:'#cccc00' },
+  { name:'白',     rgb:'#cccccc' },
+  { name:'灰',     rgb:'#888888' },
+  { name:'青紫',   rgb:'#6600cc' },
+  { name:'橙',     rgb:'#cc6600' },
+  { name:'赤紫',   rgb:'#cc0066' },
+  { name:'青緑',   rgb:'#00cc66' },
+  { name:'空色',   rgb:'#6699cc' },
+  { name:'黄緑',   rgb:'#99cc00' },
+  { name:'明灰',   rgb:'#aaaaaa' },
+];
+
+// 実機スクリーンモード定義
+// VRAM: 先頭512B=アトリビュート、以降=データ
+const MODES = {
+  1: {
+    name: 'SCREEN 1', basicScreen: 1,
+    cols: 32, rows: 16,       // キャラクタ単位
+    dotW: 256, dotH: 192,    // 表示ドット (実機の実表示域)
+    charW: 8, charH: 12,     // 1キャラ=8×12ドット相当 (表示)
+    attrSize: 512,           // アトリビュート 32×16=512B
+    dataSize: 512,           // データ 32×16=512B (キャラコード)
+    bitsPerDot: 8,           // キャラコード1B/文字
+    pa: 1,                   // ピクセルアスペクト比 (1:1 for char display)
+    cssSupport: false,
+    desc: '32×16 キャラクタ / アトリビュート512B+データ512B',
+    getPalette: (css) => PAL_SCR1,
+  },
+  2: {
+    name: 'SCREEN 2', basicScreen: 2,
+    cols: 32, rows: 16,
+    dotW: 64, dotH: 48,      // セミグラフィック解像度
+    charW: 2, charH: 3,      // 1キャラ=2×3ドット
+    attrSize: 512,
+    dataSize: 512,
+    bitsPerDot: 8,
+    pa: 2,
+    cssSupport: true,
+    desc: '64×48 セミグラフィック / 2×3ドット/文字 / 8色+黒',
+    getPalette: (css) => css === 0 ? PAL_SCR2_CSS0 : PAL_SCR2_CSS1,
+  },
+  3: {
+    name: 'SCREEN 3', basicScreen: 3,
+    cols: 32, rows: 192,     // アトリビュート列×ライン
+    dotW: 128, dotH: 192,
+    charW: 4, charH: 1,      // 2bit/dot, 4dot/byte
+    attrSize: 512,           // 32列×16ライン単位=512B
+    dataSize: 6144,          // 32B×192ライン
+    bitsPerDot: 2,
+    pa: 2,                   // 横長ドット
+    cssSupport: true,
+    desc: '128×192 4色グラフィック / 2bit/dot / 32B/line',
+    getPalette: (css) => css === 0 ? PAL_SCR3_CSS0 : PAL_SCR3_CSS1,
+  },
+  4: {
+    name: 'SCREEN 4', basicScreen: 4,
+    cols: 32, rows: 192,
+    dotW: 256, dotH: 192,
+    charW: 8, charH: 1,      // 1bit/dot, 8dot/byte
+    attrSize: 512,
+    dataSize: 6144,          // 32B×192ライン
+    bitsPerDot: 1,
+    pa: 1,
+    cssSupport: true,
+    desc: '256×192 2色グラフィック / 1bit/dot / 32B/line',
+    getPalette: (css) => css === 0 ? PAL_SCR4_CSS0 : PAL_SCR4_CSS1,
+  },
+  5: {
+    name: 'mkII 15色', basicScreen: 5,
+    cols: 160, rows: 200,
+    dotW: 160, dotH: 200,
+    charW: 1, charH: 1,
+    attrSize: 0,             // アトリビュートなし（2プレーン構成）
+    dataSize: 32000,         // 160×200×1B（簡易：色index 0-15）
+    bitsPerDot: 4,
+    pa: 2,                   // 横長ドット（160×200 on 4:3）
+    cssSupport: false,
+    desc: 'PC-6001mkII 160×200 15色グラフィック (Mode5 SCR3)',
+    getPalette: (css) => PAL_MK2_15,
+  },
+};
+
+// ═══════════════════════════════════════════════════════
+// 状態
+// ═══════════════════════════════════════════════════════
+let mode = 3;
+let css = 0;   // CSSビット (0 or 1)
+let zoom = 3;
+let stretchMode = false;  // ストレッチモード（縦横比無視で描画域全体に拡大）
+let scanlinesOn = false;  // 走査線表示 / PNG書き出し時にも反映
+let bleedOn = false;      // コンポジットにじみ（色滲み）表示 / PNG反映
+let pngScale = 2;         // PNG書き出し倍率 1/2/4
+let canvasBg = '#080600';  // キャンバス周囲背景色
+let uiTheme = 'amber';
+
+const UI_THEMES = {
+  amber: {
+    '--bg':'#0e0b07','--panel':'#161109','--panel-header':'#0a0800','--panel-info':'#0c0900',
+    '--border':'#2e2416','--border2':'#3e3020','--amber':'#ffb830','--amber-dim':'#996e1a',
+    '--amber-bright':'#ffd070','--red':'#ff4d2e','--cyan':'#30d4c8','--text':'#c8a870',
+    '--text-dim':'#5a4820','--text-mid':'#8a6830','--btn':'#1e1608','--btn-hover':'#2a2010','--active-bg':'#2a1e00',
+  },
+  green: {
+    '--bg':'#070e08','--panel':'#0d1610','--panel-header':'#050a06','--panel-info':'#080f09',
+    '--border':'#1a2e1c','--border2':'#254028','--amber':'#40e070','--amber-dim':'#1a8040',
+    '--amber-bright':'#80ffb0','--red':'#ff6060','--cyan':'#40d0c0','--text':'#90d0a0',
+    '--text-dim':'#2a5a35','--text-mid':'#4a9060','--btn':'#0e1a10','--btn-hover':'#162818','--active-bg':'#0a2a14',
+  },
+  blue: {
+    '--bg':'#070a0e','--panel':'#0d1218','--panel-header':'#05070a','--panel-info':'#080b10',
+    '--border':'#1a2430','--border2':'#283848','--amber':'#50b0ff','--amber-dim':'#286890',
+    '--amber-bright':'#90d0ff','--red':'#ff6080','--cyan':'#40e0d0','--text':'#90b8d8',
+    '--text-dim':'#2a4560','--text-mid':'#4a7098','--btn':'#0e141c','--btn-hover':'#162030','--active-bg':'#0a1e30',
+  },
+  gray: {
+    '--bg':'#101010','--panel':'#1a1a1a','--panel-header':'#0c0c0c','--panel-info':'#141414',
+    '--border':'#333','--border2':'#444','--amber':'#e0e0e0','--amber-dim':'#888',
+    '--amber-bright':'#fff','--red':'#ff6a6a','--cyan':'#70d0d0','--text':'#c0c0c0',
+    '--text-dim':'#555','--text-mid':'#888','--btn':'#222','--btn-hover':'#2e2e2e','--active-bg':'#333',
+  },
+  light: {
+    '--bg':'#e8e4dc','--panel':'#f2efe8','--panel-header':'#ddd6c8','--panel-info':'#e4dfd4',
+    '--border':'#c0b8a8','--border2':'#a89880','--amber':'#a06000','--amber-dim':'#c09040',
+    '--amber-bright':'#804000','--red':'#c03020','--cyan':'#008080','--text':'#3a3020',
+    '--text-dim':'#8a7a60','--text-mid':'#5a4a30','--btn':'#ebe6dc','--btn-hover':'#ddd6c8','--active-bg':'#f5e6c8',
+  },
+};
+
+function applyUiTheme(name) {
+  const t = UI_THEMES[name] || UI_THEMES.amber;
+  uiTheme = name;
+  const root = document.documentElement;
+  Object.keys(t).forEach(k => root.style.setProperty(k, t[k]));
+  document.querySelectorAll('.ui-theme-btn').forEach(b => {
+    const on = b.dataset.theme === name;
+    b.classList.toggle('active', on);
+    b.style.borderColor = on ? 'var(--amber)' : '';
+    b.style.color = on ? 'var(--amber)' : '';
+  });
+}
+
+const MODE_TIPS = {
+  1: 'キャラ単位（8×12）。ペンはマス全体を塗ります',
+  2: 'セミグラ 2×3ドット。色＋パターンで描画',
+  3: '4色グラフィック。横長ドットの基本モード',
+  4: '2色グラフィック。細かいドット描画向け',
+  5: 'mkII専用 15色。160×200の横長ドット',
+};
+let tool = 'pen';
+let fgIdx = 1; // パレットインデックス
+let bgIdx = 0;
+let showGrid = true;
+let showAttrGrid = true;
+
+// VRAM内部表現
+// attr[]: Uint8Array[512]  アトリビュート (各スクリーンで意味は変わる)
+// data[]: Uint8Array       データ領域
+let attr = null;
+let data = null;
+
+let undoStack = [];
+let redoStack = [];
+const MAX_UNDO = 50;
+
+let isDrawing = false;
+let startX = -1, startY = -1;
+let lastX = -1, lastY = -1;  // 連続描画用（マウス高速移動時のドット抜け防止）
+let selectedCell = null; // {col, row}
+
+// ═══════════════════════════════════════════════════════
+// DOM
+// ═══════════════════════════════════════════════════════
+const mainCanvas = document.getElementById('main-canvas');
+const gridCanvas = document.getElementById('grid-canvas');
+const ctx = mainCanvas.getContext('2d');
+const gctx = gridCanvas.getContext('2d');
+
+// ═══════════════════════════════════════════════════════
+// 初期化
+// ═══════════════════════════════════════════════════════
+function initMode(m, keepUndo) {
+  mode = m;
+  css = 0;
+  const md = MODES[m];
+  attr = new Uint8Array(md.attrSize);
+  data = new Uint8Array(md.dataSize);
+
+  // アトリビュートのデフォルト値を実機仕様で初期化
+  fillDefaultAttr();
+
+  if (!keepUndo) { undoStack = []; redoStack = []; }
+  // 初期FG色
+  if (m === 1) { fgIdx = 0; bgIdx = 1; }      // 白 / 黒
+  else if (m === 5) { fgIdx = 7; bgIdx = 0; } // 白 / 黒
+  else { fgIdx = md.getPalette(css).length > 1 ? 1 : 0; bgIdx = 0; }
+  selectedCell = null;
+
+  updateModeUI();
+  resizeCanvases();
+  render();
+  updateUndoUI();
+}
+
+function fillDefaultAttr() {
+  const md = MODES[mode];
+  if (!md.attrSize || !attr || attr.length === 0) return;
+  let val;
+  switch (mode) {
+    case 1: val = ATTR.SCR1; break;
+    case 2: val = ATTR.SCR2; break;
+    case 3: val = css === 0 ? ATTR.SCR3_CSS0 : ATTR.SCR3_CSS1; break;
+    case 4: val = css === 0 ? ATTR.SCR4_CSS0 : ATTR.SCR4_CSS1; break;
+    default: val = 0; break;
+  }
+  attr.fill(val);
+}
+
+function updateModeUI() {
+  const md = MODES[mode];
+  const tip = MODE_TIPS[mode] || '';
+  document.getElementById('mode-info').textContent =
+    `${md.name}  —  ${tip}  —  ${md.dotW}×${md.dotH}`;
+  document.getElementById('mode-info').title = md.desc;
+  document.getElementById('sb-mode').textContent = md.name;
+  const tipEl = document.getElementById('sb-mode-tip');
+  if (tipEl) tipEl.textContent = tip;
+
+  document.getElementById('screen-info').innerHTML =
+    `解像度: ${md.dotW}×${md.dotH}<br>` +
+    `キャラ: ${md.cols}×${md.rows}<br>` +
+    `ドット: ${md.bitsPerDot}bit/dot<br>` +
+    `ATTR: ${md.attrSize}B<br>` +
+    `DATA: ${md.dataSize}B<br>` +
+    `<span style="color:var(--amber-dim)">${tip}</span>`;
+
+  document.querySelectorAll('.mode-tab').forEach(t =>
+    t.classList.toggle('active', +t.dataset.mode === mode));
+
+  // CSS selector
+  const cssSection = document.getElementById('css-section');
+  cssSection.style.display = md.cssSupport ? 'block' : 'none';
+  document.querySelectorAll('.css-btn').forEach(b =>
+    b.classList.toggle('active', +b.dataset.css === css));
+
+  // Char grid visibility: SCR1/2のみ
+  document.getElementById('char-grid-wrap').style.display =
+    (mode === 1 || mode === 2) ? 'block' : 'none';
+  document.getElementById('char-input-wrap').style.display = 'none';
+  document.getElementById('cell-highlight').style.display = 'none';
+
+  buildPalette();
+  updateColorUI();
+}
+
+// ═══════════════════════════════════════════════════════
+// パレット UI
+// ═══════════════════════════════════════════════════════
+function buildPalette() {
+  const md = MODES[mode];
+  const pal = md.getPalette(css);
+  const grid = document.getElementById('palette-grid');
+  grid.innerHTML = '';
+  pal.forEach((c, i) => {
+    const cell = document.createElement('div');
+    cell.className = 'pal-cell';
+    cell.style.background = c.rgb;
+    cell.title = `${i}: ${c.name} (${c.rgb})`;
+    if (i === fgIdx) cell.classList.add('fg');
+    if (i === bgIdx) cell.classList.add('bg');
+    cell.addEventListener('click', () => { fgIdx = i; updateColorUI(); });
+    cell.addEventListener('contextmenu', e => { e.preventDefault(); bgIdx = i; updateColorUI(); });
+    grid.appendChild(cell);
+  });
+}
+
+function updateColorUI() {
+  const pal = MODES[mode].getPalette(css);
+  document.querySelectorAll('.pal-cell').forEach((c, i) => {
+    c.classList.toggle('fg', i === fgIdx);
+    c.classList.toggle('bg', i === bgIdx);
+  });
+  const fgColor = pal[Math.min(fgIdx, pal.length-1)];
+  const bgColor = pal[Math.min(bgIdx, pal.length-1)];
+  document.getElementById('ci-fg').style.background = fgColor.rgb;
+  document.getElementById('ci-bg').style.background = bgColor.rgb;
+}
+
+// ═══════════════════════════════════════════════════════
+// レンダリング
+// ═══════════════════════════════════════════════════════
+function resizeCanvases() {
+  const md = MODES[mode];
+  // 内部解像度: ストレッチ時も論理ドットをしっかり描くため zoom ベース
+  // 通常時は pa（横長）を反映
+  const pa = stretchMode ? 1 : md.pa;
+  // ストレッチ時は内部を大きめにして拡大時も比較的きれいに
+  const z = stretchMode ? Math.max(zoom, 4) : zoom;
+  const w = md.dotW * z * pa;
+  const h = md.dotH * z;
+  mainCanvas.width = w; mainCanvas.height = h;
+  gridCanvas.width = w; gridCanvas.height = h;
+
+  // CSS表示サイズ
+  const area = document.getElementById('canvas-area');
+  if (stretchMode) {
+    area.classList.add('stretch');
+    // width/height 100% は CSS で制御
+    mainCanvas.style.width = '100%';
+    mainCanvas.style.height = '100%';
+    gridCanvas.style.width = '100%';
+    gridCanvas.style.height = '100%';
+  } else {
+    area.classList.remove('stretch');
+    mainCanvas.style.width = '';
+    mainCanvas.style.height = '';
+    gridCanvas.style.width = '';
+    gridCanvas.style.height = '';
+  }
+  drawGrid();
+}
+
+function render(previewData) {
+  const md = MODES[mode];
+  const pal = md.getPalette(css);
+  const src = previewData || data;
+  ctx.clearRect(0, 0, mainCanvas.width, mainCanvas.height);
+
+  if (mode === 1) renderSCR1(pal, src);
+  else if (mode === 2) renderSCR2(pal, src);
+  else if (mode === 3) renderSCR3(pal, src);
+  else if (mode === 4) renderSCR4(pal, src);
+  else if (mode === 5) renderSCR5(pal, src);
+  if (bleedOn) applyCompositeBleed(ctx, mainCanvas);
+  drawGrid(); // 走査線・グリッドを再描画
+}
+
+// PC-6001 コンポジット映像のにじみ（色滲み）を簡易再現
+// 輝度は残しつつ、色差を横方向にぼかす
+function applyCompositeBleed(targetCtx, canvas) {
+  const w = canvas.width, h = canvas.height;
+  if (w < 2 || h < 1) return;
+  const img = targetCtx.getImageData(0, 0, w, h);
+  const src = new Uint8ClampedArray(img.data);
+  const d = img.data;
+  // にじみ幅: 論理1ドット分程度
+  let radius = 1;
+  try {
+    const ds = getDotSize();
+    radius = Math.max(1, Math.round(ds.dotW * 0.75));
+  } catch (_) {}
+  const weights = [];
+  let wsum = 0;
+  for (let i = -radius; i <= radius; i++) {
+    const wt = radius + 1 - Math.abs(i);
+    weights.push(wt);
+    wsum += wt;
+  }
+  for (let y = 0; y < h; y++) {
+    const row = y * w;
+    for (let x = 0; x < w; x++) {
+      let sr = 0, sg = 0, sb = 0;
+      for (let i = -radius; i <= radius; i++) {
+        const xx = Math.min(w - 1, Math.max(0, x + i));
+        const idx = (row + xx) * 4;
+        const wt = weights[i + radius];
+        sr += src[idx] * wt;
+        sg += src[idx + 1] * wt;
+        sb += src[idx + 2] * wt;
+      }
+      sr /= wsum; sg /= wsum; sb /= wsum;
+      const oi = (row + x) * 4;
+      const or = src[oi], og = src[oi + 1], ob = src[oi + 2];
+      // 元の輝度 + 滲ませた色差
+      const luma = 0.299 * or + 0.587 * og + 0.114 * ob;
+      const sluma = 0.299 * sr + 0.587 * sg + 0.114 * sb;
+      const strength = 1.15; // にじみの強さ
+      d[oi]     = Math.min(255, Math.max(0, luma + (sr - sluma) * strength));
+      d[oi + 1] = Math.min(255, Math.max(0, luma + (sg - sluma) * strength));
+      d[oi + 2] = Math.min(255, Math.max(0, luma + (sb - sluma) * strength));
+    }
+  }
+  targetCtx.putImageData(img, 0, 0);
+}
+
+function renderSCR1(pal, src) {
+  // SCREEN 1: 32×16キャラ、CGROMビットパターンで8×12ドット描画
+  const md = MODES[mode];
+  const { dotW, dotH } = getDotSize();
+  const cw = md.dotW / md.cols; // 8 dots/char
+  const ch = md.dotH / md.rows; // 12 dots/char
+  for (let row = 0; row < md.rows; row++) {
+    for (let col = 0; col < md.cols; col++) {
+      const charCode = src[row * md.cols + col];
+      const attrByte = attr[row * md.cols + col];
+      const inv  = attrByte & 0x01;
+      const cssA = (attrByte >> 1) & 0x01;
+      const fgColor = inv ? '#000000' : (cssA ? '#00cc00' : '#ffffff');
+      const bgColor = inv ? (cssA ? '#00cc00' : '#ffffff') : '#000000';
+      const px0 = col * cw * dotW;
+      const py0 = row * ch * dotH;
+      // BG塗り
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(px0, py0, cw * dotW, ch * dotH);
+      // CGROMビット描画 (8×12)
+      const cgBase = charCode * 16;
+      ctx.fillStyle = fgColor;
+      for (let dr = 0; dr < 12; dr++) {
+        const bits = CGROM[cgBase + dr] || 0;
+        for (let dc = 0; dc < 8; dc++) {
+          if ((bits >> (7 - dc)) & 1) {
+            ctx.fillRect(px0 + dc * dotW, py0 + dr * dotH, dotW, dotH);
+          }
+        }
+      }
+    }
+  }
+}
+
+function getDotSize() {
+  // 内部キャンバス上の1論理ドットのピクセルサイズ
+  const md = MODES[mode];
+  return {
+    dotW: mainCanvas.width / md.dotW,
+    dotH: mainCanvas.height / md.dotH,
+  };
+}
+
+function renderSCR2(pal, src) {
+  // SCREEN 2: 64×48セミグラフィック, 2×3ドット/文字
+  // データ: bit7-6=カラーコード, bit5-0=ドットパターン
+  const md = MODES[mode];
+  const cw = 2, ch = 3; // dots per char
+  const { dotW, dotH } = getDotSize();
+  for (let row = 0; row < md.rows; row++) {
+    for (let col = 0; col < md.cols; col++) {
+      const byte = src[row * md.cols + col];
+      const colorCode = (byte >> 6) & 0x03;
+      const dots = byte & 0x3F;
+      const color = pal[colorCode + 1] || pal[0]; // +1 to skip black
+      // 2×3ドット  bit0=右上 … bit5=左下（左が上位ビット）
+      for (let dr = 0; dr < 3; dr++) {
+        for (let dc = 0; dc < 2; dc++) {
+          const bitIdx = dr * 2 + (1 - dc); // dc=0(左)→上位, dc=1(右)→下位
+          const on = (dots >> bitIdx) & 1;
+          ctx.fillStyle = on ? color.rgb : pal[0].rgb;
+          ctx.fillRect(
+            (col * 2 + dc) * dotW,
+            (row * 3 + dr) * dotH,
+            dotW, dotH
+          );
+        }
+      }
+    }
+  }
+}
+
+function renderSCR3(pal, src) {
+  // SCREEN 3: 128×192, 2bit/dot, MSB=左
+  const md = MODES[mode];
+  const { dotW, dotH } = getDotSize();
+  for (let y = 0; y < md.dotH; y++) {
+    const lineBase = y * 32; // 32B/line
+    for (let bx = 0; bx < 32; bx++) {
+      const byte = src[lineBase + bx];
+      for (let d = 0; d < 4; d++) {
+        const colorIdx = (byte >> (6 - d * 2)) & 0x03;
+        ctx.fillStyle = pal[colorIdx].rgb;
+        const dotX = bx * 4 + d;
+        ctx.fillRect(dotX * dotW, y * dotH, dotW, dotH);
+      }
+    }
+  }
+}
+
+function renderSCR4(pal, src) {
+  // SCREEN 4: 256×192, 1bit/dot, MSB=左
+  const md = MODES[mode];
+  const { dotW, dotH } = getDotSize();
+  for (let y = 0; y < md.dotH; y++) {
+    const lineBase = y * 32;
+    for (let bx = 0; bx < 32; bx++) {
+      const byte = src[lineBase + bx];
+      for (let d = 0; d < 8; d++) {
+        const bit = (byte >> (7 - d)) & 1;
+        ctx.fillStyle = pal[bit].rgb;
+        const dotX = bx * 8 + d;
+        ctx.fillRect(dotX * dotW, y * dotH, dotW, dotH);
+      }
+    }
+  }
+}
+
+function renderSCR5(pal, src) {
+  // PC-6001mkII 160×200 15色（1ドット1バイト）
+  const md = MODES[mode];
+  const { dotW, dotH } = getDotSize();
+  for (let y = 0; y < md.dotH; y++) {
+    const rowBase = y * md.dotW;
+    for (let x = 0; x < md.dotW; x++) {
+      const ci = src[rowBase + x] & 0x0F;
+      ctx.fillStyle = (pal[ci] || pal[0]).rgb;
+      ctx.fillRect(x * dotW, y * dotH, dotW, dotH);
+    }
+  }
+}
+
+function drawGrid() {
+  const md = MODES[mode];
+  gctx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+  const { dotW, dotH } = getDotSize();
+
+  if (showGrid && (zoom >= 4 || stretchMode) && mode >= 3) {
+    // ピクセルグリッド
+    gctx.strokeStyle = 'rgba(255,184,48,0.06)';
+    gctx.lineWidth = 0.5;
+    for (let x = 0; x <= md.dotW; x++) {
+      gctx.beginPath(); gctx.moveTo(x * dotW, 0); gctx.lineTo(x * dotW, md.dotH * dotH); gctx.stroke();
+    }
+    for (let y = 0; y <= md.dotH; y++) {
+      gctx.beginPath(); gctx.moveTo(0, y * dotH); gctx.lineTo(md.dotW * dotW, y * dotH); gctx.stroke();
+    }
+  }
+
+  if (showAttrGrid) {
+    // アトリビュートグリッド (32列)
+    gctx.strokeStyle = 'rgba(255,184,48,0.18)';
+    gctx.lineWidth = 1;
+    const attrColW = md.dotW / md.cols * dotW; // 各アトリビュート列幅
+    for (let c = 0; c <= md.cols; c++) {
+      const px = c * attrColW;
+      gctx.beginPath(); gctx.moveTo(px, 0); gctx.lineTo(px, md.dotH * dotH); gctx.stroke();
+    }
+    if (mode === 1 || mode === 2) {
+      // キャラクタモード: 行グリッドも
+      const rowH = md.dotH / md.rows * dotH;
+      for (let r = 0; r <= md.rows; r++) {
+        const py = r * rowH;
+        gctx.beginPath(); gctx.moveTo(0, py); gctx.lineTo(md.dotW * dotW, py); gctx.stroke();
+      }
+    } else {
+      // グラフィックモード: 16ラインごとにアトリビュート区切り
+      gctx.strokeStyle = 'rgba(48,212,200,0.15)';
+      for (let r = 0; r <= md.dotH; r += 16) {
+        const py = r * dotH;
+        gctx.beginPath(); gctx.moveTo(0, py); gctx.lineTo(md.dotW * dotW, py); gctx.stroke();
+      }
+    }
+  }
+
+  // 走査線（奇数ラインを暗く）
+  if (scanlinesOn) {
+    gctx.fillStyle = 'rgba(0,0,0,0.40)';
+    for (let y = 0; y < md.dotH; y++) {
+      if (y % 2 === 1) {
+        const lineH = Math.max(1, dotH * 0.55);
+        gctx.fillRect(0, y * dotH + (dotH - lineH) / 2, mainCanvas.width, lineH);
+      }
+    }
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// 描画ツール
+// ═══════════════════════════════════════════════════════
+function getCanvasXY(e) {
+  const rect = mainCanvas.getBoundingClientRect();
+  const md = MODES[mode];
+  let cx = (e.clientX || e.touches?.[0]?.clientX || 0) - rect.left;
+  let cy = (e.clientY || e.touches?.[0]?.clientY || 0) - rect.top;
+  // 表示サイズ → 内部キャンバス座標 → 論理ドット座標
+  const scaleX = mainCanvas.width / Math.max(1, rect.width);
+  const scaleY = mainCanvas.height / Math.max(1, rect.height);
+  const { dotW, dotH } = getDotSize();
+  return {
+    x: Math.max(0, Math.min(md.dotW - 1, Math.floor((cx * scaleX) / dotW))),
+    y: Math.max(0, Math.min(md.dotH - 1, Math.floor((cy * scaleY) / dotH))),
+  };
+}
+
+function getDrawColor(rightClick) {
+  return Number(rightClick ? bgIdx : fgIdx);
+}
+
+function getDataIndex(x, y) {
+  const md = MODES[mode];
+  if (mode === 1 || mode === 2) {
+    const col = Math.floor(x / (md.dotW / md.cols));
+    const row = Math.floor(y / (md.dotH / md.rows));
+    return row * md.cols + col;
+  } else if (mode === 3) {
+    return y * 32 + Math.floor(x / 4);
+  } else { // mode 4
+    return y * 32 + Math.floor(x / 8);
+  }
+}
+
+function setDot(x, y, colorIdx, buf) {
+  const md = MODES[mode];
+  const target = buf || data;
+  if (mode === 3) {
+    const byteIdx = y * 32 + Math.floor(x / 4);
+    const bitPos = 6 - (x % 4) * 2;
+    target[byteIdx] = (target[byteIdx] & ~(0x03 << bitPos)) | ((colorIdx & 0x03) << bitPos);
+  } else if (mode === 4) {
+    const byteIdx = y * 32 + Math.floor(x / 8);
+    const bitPos = 7 - (x % 8);
+    if (colorIdx & 1) target[byteIdx] |= (1 << bitPos);
+    else target[byteIdx] &= ~(1 << bitPos);
+  } else if (mode === 5) {
+    // mkII 15色: 1ドット1バイト
+    if (x < 0 || y < 0 || x >= md.dotW || y >= md.dotH) return;
+    target[y * md.dotW + x] = colorIdx & 0x0F;
+  } else if (mode === 2) {
+    // SCREEN 2 セミグラ: 2×3ドットのパターン＋色を更新
+    const cellW = md.dotW / md.cols; // 2
+    const cellH = md.dotH / md.rows; // 3
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    if (col < 0 || col >= md.cols || row < 0 || row >= md.rows) return;
+    const idx = row * md.cols + col;
+    const dx = x % cellW; // 0 or 1
+    const dy = y % cellH; // 0,1,2
+    // bit mapping: 左が上位（renderSCR2 と一致）
+    const bitIdx = dy * 2 + (1 - dx);
+    let pattern = target[idx] & 0x3F;
+    if (colorIdx > 0) {
+      pattern |= (1 << bitIdx);          // ドットON
+      // パレット index 1〜4 → ハードウェア colorCode 0〜3
+      const code = Math.max(0, Math.min(3, (colorIdx - 1) & 0x03));
+      target[idx] = (pattern & 0x3F) | (code << 6);
+    } else {
+      pattern &= ~(1 << bitIdx);         // ドットOFF（消しゴム）
+      target[idx] = (pattern & 0x3F) | (target[idx] & 0xC0); // 色は維持
+    }
+  } else if (mode === 1) {
+    // SCREEN 1: セル全体を塗りつぶし（簡易）
+    // CGROMにソリッドがないため、文字=0x00 + INV属性で背景色をセル全面に出す
+    // パレット: 0=白, 1=黒, 2=緑, 3=深緑(→緑として保存)
+    const cellW = md.dotW / md.cols; // 8
+    const cellH = md.dotH / md.rows; // 12
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    if (col < 0 || col >= md.cols || row < 0 || row >= md.rows) return;
+    const idx = row * md.cols + col;
+    const c = Number(colorIdx);
+    target[idx] = 0x00; // パターンなし（背景色だけ見せる）
+    if (c === 1) {
+      attr[idx] = 0x00; // 黒 INV=0
+    } else if (c === 0) {
+      attr[idx] = 0x01; // 白 INV=1 CSS=0
+    } else {
+      attr[idx] = 0x03; // 緑 INV=1 CSS=1
+    }
+  }
+}
+
+function getDot(x, y) {
+  const md = MODES[mode];
+  if (mode === 3) {
+    const byteIdx = y * 32 + Math.floor(x / 4);
+    const bitPos = 6 - (x % 4) * 2;
+    return (data[byteIdx] >> bitPos) & 0x03;
+  } else if (mode === 4) {
+    const byteIdx = y * 32 + Math.floor(x / 8);
+    const bitPos = 7 - (x % 8);
+    return (data[byteIdx] >> bitPos) & 1;
+  } else if (mode === 5) {
+    if (x < 0 || y < 0 || x >= md.dotW || y >= md.dotH) return 0;
+    return data[y * md.dotW + x] & 0x0F;
+  } else if (mode === 2) {
+    const cellW = md.dotW / md.cols;
+    const cellH = md.dotH / md.rows;
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    if (col < 0 || col >= md.cols || row < 0 || row >= md.rows) return 0;
+    const idx = row * md.cols + col;
+    const dx = x % cellW;
+    const dy = y % cellH;
+    const bitIdx = dy * 2 + (1 - dx);
+    const on = (data[idx] >> bitIdx) & 1;
+    const colorCode = (data[idx] >> 6) & 0x03;
+    return on ? (colorCode + 1) : 0; // パレット index に合わせて +1
+  } else if (mode === 1) {
+    const cellW = md.dotW / md.cols;
+    const cellH = md.dotH / md.rows;
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    if (col < 0 || col >= md.cols || row < 0 || row >= md.rows) return 1;
+    const idx = row * md.cols + col;
+    const a = attr[idx] || 0;
+    const inv = a & 0x01;
+    const cssA = (a >> 1) & 0x01;
+    if (!inv) return 1;          // 黒
+    return cssA ? 2 : 0;         // 緑 or 白
+  }
+  return 0;
+}
+
+// 1ドットだけをキャンバスに直接描画（フル再描画を避ける高速パス）
+function paintDot(x, y, colorIdx) {
+  const md = MODES[mode];
+  const pal = md.getPalette(css);
+  const { dotW, dotH } = getDotSize();
+
+  if (mode >= 3) {
+    ctx.fillStyle = (pal[colorIdx] || pal[0]).rgb;
+    ctx.fillRect(x * dotW, y * dotH, dotW, dotH);
+    return;
+  }
+
+  // SCR1/2: セル単位で直接塗る
+  if (mode === 1) {
+    const cellW = md.dotW / md.cols; // 8
+    const cellH = md.dotH / md.rows; // 12
+    const col = Math.floor(x / cellW);
+    const row = Math.floor(y / cellH);
+    if (col < 0 || col >= md.cols || row < 0 || row >= md.rows) return;
+    // パレット色をそのまま使用（0=白, 1=黒, 2=緑, 3=深緑）
+    const rgb = (pal[colorIdx] || pal[0]).rgb;
+    ctx.fillStyle = rgb;
+    ctx.fillRect(col * cellW * dotW, row * cellH * dotH, cellW * dotW, cellH * dotH);
+  } else if (mode === 2) {
+    // 1ドット単位
+    let rgb = '#000000';
+    if (colorIdx > 0) {
+      rgb = (pal[colorIdx] || pal[1] || pal[0]).rgb;
+    }
+    ctx.fillStyle = rgb;
+    ctx.fillRect(x * dotW, y * dotH, dotW, dotH);
+  }
+}
+
+function drawBresenham(x0, y0, x1, y1, color, buf, paintLive) {
+  let dx = Math.abs(x1-x0), dy = Math.abs(y1-y0);
+  let sx = x0<x1?1:-1, sy = y0<y1?1:-1, err = dx-dy;
+  while (true) {
+    setDot(x0, y0, color, buf);
+    if (paintLive) paintDot(x0, y0, color);
+    if (x0===x1 && y0===y1) break;
+    let e2 = 2*err;
+    if (e2 > -dy) { err -= dy; x0 += sx; }
+    if (e2 < dx)  { err += dx; y0 += sy; }
+  }
+}
+
+function drawRect(x0, y0, x1, y1, color, fill, buf) {
+  let lx=Math.min(x0,x1), rx=Math.max(x0,x1);
+  let ly=Math.min(y0,y1), ry=Math.max(y0,y1);
+  if (fill) {
+    for (let y=ly; y<=ry; y++) for (let x=lx; x<=rx; x++) setDot(x,y,color,buf);
+  } else {
+    for (let x=lx; x<=rx; x++) { setDot(x,ly,color,buf); setDot(x,ry,color,buf); }
+    for (let y=ly; y<=ry; y++) { setDot(lx,y,color,buf); setDot(rx,y,color,buf); }
+  }
+}
+
+// colorFn(x,y) があればその色で塗る（市松模様など）。なければ fillColor 一色
+function floodFill(x0, y0, fillColor, colorFn) {
+  const md = MODES[mode];
+  const target = getDot(x0, y0);
+  // 単色塗りで開始点が同じ色なら何もしない（市松は FG/BG 混在なので続行可）
+  if (!colorFn && target === fillColor) return;
+
+  const pick = (x, y) => (colorFn ? colorFn(x, y) : fillColor);
+
+  // SCR1/2 はキャラクタセル単位で塗る
+  if (mode === 1 || mode === 2) {
+    const cellW = md.dotW / md.cols;
+    const cellH = md.dotH / md.rows;
+    const startCol = Math.floor(x0 / cellW);
+    const startRow = Math.floor(y0 / cellH);
+    const stack = [[startCol, startRow]];
+    const visited = new Uint8Array(md.cols * md.rows);
+
+    const cellMatches = (col, row) => {
+      if (mode === 1) {
+        return getDot(col * cellW, row * cellH) === target;
+      }
+      for (let dy = 0; dy < cellH; dy++) {
+        for (let dx = 0; dx < cellW; dx++) {
+          if (getDot(col * cellW + dx, row * cellH + dy) === target) return true;
+        }
+      }
+      return target === 0;
+    };
+
+    const fillCell = (col, row) => {
+      if (mode === 1) {
+        // セル単位の市松: (col+row) で FG/BG
+        setDot(col * cellW, row * cellH, pick(col, row));
+        return;
+      }
+      // SCR2: セル内ドット単位で市松も可能
+      for (let dy = 0; dy < cellH; dy++) {
+        for (let dx = 0; dx < cellW; dx++) {
+          const px = col * cellW + dx;
+          const py = row * cellH + dy;
+          setDot(px, py, pick(px, py));
+        }
+      }
+    };
+
+    while (stack.length) {
+      const [col, row] = stack.pop();
+      if (col < 0 || row < 0 || col >= md.cols || row >= md.rows) continue;
+      const vidx = row * md.cols + col;
+      if (visited[vidx]) continue;
+      visited[vidx] = 1;
+      if (!cellMatches(col, row)) continue;
+      fillCell(col, row);
+      stack.push([col+1, row], [col-1, row], [col, row+1], [col, row-1]);
+    }
+    return;
+  }
+
+  // SCR3/4/5: ピクセル単位
+  const stack = [[x0, y0]];
+  const visited = new Uint8Array(md.dotW * md.dotH);
+  while (stack.length) {
+    const [x, y] = stack.pop();
+    if (x < 0 || y < 0 || x >= md.dotW || y >= md.dotH) continue;
+    const vidx = y * md.dotW + x;
+    if (visited[vidx]) continue;
+    visited[vidx] = 1;
+    if (getDot(x, y) !== target) continue;
+    setDot(x, y, pick(x, y));
+    stack.push([x+1, y], [x-1, y], [x, y+1], [x, y-1]);
+  }
+}
+
+// ═══════════════════════════════════════════════════════
+// イベント
+// ═══════════════════════════════════════════════════════
+mainCanvas.addEventListener('contextmenu', e => e.preventDefault());
+mainCanvas.addEventListener('mousedown', onDown);
+mainCanvas.addEventListener('mousemove', onMove);
+mainCanvas.addEventListener('mouseup', onUp);
+mainCanvas.addEventListener('mouseleave', onUp);
+mainCanvas.addEventListener('touchstart', e => { e.preventDefault(); onDown(e); }, {passive:false});
+mainCanvas.addEventListener('touchmove', e => { e.preventDefault(); onMove(e); }, {passive:false});
+mainCanvas.addEventListener('touchend', onUp, {passive:false});
+
+function onDown(e) {
+  const {x, y} = getCanvasXY(e);
+  const right = e.button === 2;
+  const color = getDrawColor(right);
+  const md = MODES[mode];
+
+  if (tool === 'eyedropper') {
+    const c = getDot(x, y);
+    if (right) bgIdx = c; else fgIdx = c;
+    updateColorUI();
+    return;
+  }
+  if (tool === 'charsel') {
+    const col = Math.floor(x / (md.dotW / md.cols));
+    const row = Math.floor(y / (md.dotH / md.rows));
+    selectedCell = {col, row};
+    document.getElementById('char-pos-label').textContent =
+      `[${col},${row}] ATTR:0x${attr[row*md.cols+col].toString(16).toUpperCase().padStart(2,'0')}`;
+    updateCharGrid();
+    updateAttrInfo(col, row);
+    return;
+  }
+  if (tool === 'fill') {
+    pushUndo();
+    floodFill(x, y, color);
+    render();
+    return;
+  }
+  if (tool === 'fillcheck') {
+    // FG + BG の市松模様で塗りつぶし
+    pushUndo();
+    const fg = Number(fgIdx);
+    const bg = Number(bgIdx);
+    floodFill(x, y, fg, (px, py) => ((px + py) & 1) ? bg : fg);
+    render();
+    return;
+  }
+
+  pushUndo();
+  isDrawing = true;
+  startX = x; startY = y;
+  lastX = x; lastY = y;
+
+  if (tool === 'pen' || tool === 'eraser') {
+    // SCR1: 消しゴムは常に黒(index1)
+    let c;
+    if (tool === 'eraser') {
+      c = (mode === 1) ? 1 : bgIdx;
+    } else {
+      c = color;
+    }
+    // SCR1はセル原点にスナップして描画を確実にする
+    let dx = x, dy = y;
+    if (mode === 1) {
+      const cellW = MODES[1].dotW / MODES[1].cols; // 8
+      const cellH = MODES[1].dotH / MODES[1].rows; // 12
+      dx = Math.floor(x / cellW) * cellW;
+      dy = Math.floor(y / cellH) * cellH;
+      lastX = dx; lastY = dy;
+    }
+    setDot(dx, dy, c);
+    paintDot(dx, dy, c);
+    if (mode === 1) render();
+  }
+}
+
+function onMove(e) {
+  const {x, y} = getCanvasXY(e);
+  const md = MODES[mode];
+  const col = Math.floor(x / (md.dotW / md.cols));
+  const row = Math.floor(y / (md.dotH / md.rows));
+  const attrIdx = mode >= 3 ? Math.floor(y/16)*md.cols + col : row*md.cols + col;
+  const attrByte = (md.attrSize > 0) ? attr[Math.min(attrIdx, md.attrSize-1)] : 0;
+  const vramOffset = mode === 5 ? (y * md.dotW + x)
+                    : mode >= 3 ? md.attrSize + y*32 + Math.floor(x/(mode===3?4:8))
+                    : md.attrSize + row*md.cols + col;
+
+  document.getElementById('coord-info').innerHTML =
+    `X:${x} Y:${y}<br>ATTR:${col},${row>=md.rows?md.rows-1:row}<br>VRAM:$${vramOffset.toString(16).toUpperCase().padStart(4,'0')}h`;
+
+  if (!isDrawing) return;
+  const right = e.button === 2;
+  const color = getDrawColor(right);
+
+  if (tool === 'pen' || tool === 'eraser') {
+    let c;
+    if (tool === 'eraser') {
+      c = (mode === 1) ? 1 : bgIdx;
+    } else {
+      c = color;
+    }
+    if (mode === 1) {
+      // セル単位でスナップして塗る（ドラッグでマス目をなぞる）
+      const cellW = MODES[1].dotW / MODES[1].cols;
+      const cellH = MODES[1].dotH / MODES[1].rows;
+      const dx = Math.floor(x / cellW) * cellW;
+      const dy = Math.floor(y / cellH) * cellH;
+      if (dx !== lastX || dy !== lastY) {
+        setDot(dx, dy, c);
+        lastX = dx; lastY = dy;
+        render();
+      }
+    } else if (lastX !== x || lastY !== y) {
+      drawBresenham(lastX, lastY, x, y, c, null, true);
+      lastX = x; lastY = y;
+    }
+  } else if (tool === 'line' || tool === 'rect' || tool === 'rectfill') {
+    if (mode < 3) return;
+    const tmp = data.slice();
+    if (tool === 'line') drawBresenham(startX, startY, x, y, color, tmp);
+    else drawRect(startX, startY, x, y, color, tool === 'rectfill', tmp);
+    render(tmp);
+  }
+}
+
+function onUp(e) {
+  if (!isDrawing) return;
+  const ev = e.changedTouches ? e.changedTouches[0] : e;
+  const {x, y} = getCanvasXY(ev);
+  const right = e.button === 2;
+  const color = getDrawColor(right);
+
+  if (mode >= 3) {
+    if (tool === 'line') drawBresenham(startX, startY, x, y, color);
+    else if (tool === 'rect') drawRect(startX, startY, x, y, color, false);
+    else if (tool === 'rectfill') drawRect(startX, startY, x, y, color, true);
+  }
+  isDrawing = false;
+  lastX = lastY = -1;
+  render();
+}
+
+// ═══════════════════════════════════════════════════════
+// アトリビュート表示
+// ═══════════════════════════════════════════════════════
+function updateAttrInfo(col, row) {
+  const md = MODES[mode];
+  const idx = row * md.cols + col;
+  const a = attr[idx] || 0;
+  const ag  = (a >> 7) & 1;
+  const as_ = (a >> 6) & 1;
+  const ie  = (a >> 5) & 1;
+  const gm0 = (a >> 4) & 1;
+  const gm1 = (a >> 3) & 1;
+  const gm2 = (a >> 2) & 1;
+  const cssA= (a >> 1) & 1;
+  const inv = a & 1;
+  document.getElementById('attr-info').innerHTML =
+    `Byte: 0x${a.toString(16).toUpperCase().padStart(2,'0')}<br>` +
+    `#A/G:${ag} #A/S:${as_} IE:${ie}<br>` +
+    `GM:${gm0}${gm1}${gm2} CSS:${cssA} INV:${inv}`;
+}
+
+// ═══════════════════════════════════════════════════════
+// キャラクタグリッド (SCR1/2)
+// ═══════════════════════════════════════════════════════
+function updateCharGrid() {
+  if (!selectedCell || mode > 2) return;
+  const {col, row} = selectedCell;
+  const md = MODES[mode];
+  const idx = row * md.cols + col;
+  const grid = document.getElementById('char-grid');
+  grid.innerHTML = '';
+  const byte = data[idx] || 0;
+  const attrByte = attr[idx] || 0;
+  const cssA = (attrByte >> 1) & 1;
+  const pal = md.getPalette(css);
+
+  // ハイライト更新
+  updateCellHighlight(col, row);
+
+  // セル位置表示
+  document.getElementById('char-pos-label').textContent =
+    `[${col},${row}] CODE:0x${byte.toString(16).toUpperCase().padStart(2,'0')} (${byte >= 0x20 && byte < 0x80 ? String.fromCharCode(byte) : '?'})`;
+
+  if (mode === 1) {
+    // 文字入力UI表示
+    document.getElementById('char-input-wrap').style.display = 'block';
+    document.getElementById('char-palette-wrap').style.display = 'block';
+    const inp = document.getElementById('char-input');
+    inp.value = (byte >= 0x20 && byte < 0x80) ? String.fromCharCode(byte) : '';
+    // CSS状態をボタンに反映
+    const cssA = (attrByte >> 1) & 1;
+    document.getElementById('btn-attr-css0').style.borderColor = cssA === 0 ? 'var(--amber)' : '';
+    document.getElementById('btn-attr-css1').style.borderColor = cssA === 1 ? 'var(--amber)' : '';
+    // パレット描画（初回のみ。ズーム変更時も再描画）
+    buildCharPalette();
+    // 入力フィールドにフォーカス
+    setTimeout(() => inp.focus(), 50);
+
+  } else if (mode === 2) {
+    document.getElementById('char-input-wrap').style.display = 'none';
+    // セミグラフィック: 2×3ドットグリッド
+    const colorCode = (byte >> 6) & 0x03;
+    const dots = byte & 0x3F;
+    const color = pal[colorCode+1]?.rgb || '#ffb830';
+    grid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+    for (let r = 0; r < 3; r++) {
+      for (let c2 = 0; c2 < 2; c2++) {
+        const bitIdx = (1 - c2) + r * 2;
+        const on = (dots >> bitIdx) & 1;
+        const cell = document.createElement('div');
+        cell.className = 'cg-cell' + (on ? ' on' : '');
+        if (on) cell.style.background = color;
+        cell.addEventListener('click', () => {
+          pushUndo();
+          const cur = (data[idx] >> bitIdx) & 1;
+          if (cur) data[idx] &= ~(1 << bitIdx);
+          else data[idx] |= (1 << bitIdx);
+          render();
+          updateCharGrid();
+        });
+        grid.appendChild(cell);
+      }
+    }
+  }
+}
+
+// 選択セルをキャンバス上でハイライト
+function updateCellHighlight(col, row) {
+  const md = MODES[mode];
+  const hl = document.getElementById('cell-highlight');
+  if (!selectedCell || mode > 2) { hl.style.display = 'none'; return; }
+  const cw = md.dotW / md.cols;
+  const ch = md.dotH / md.rows;
+  const dotW = zoom * (md.pa || 1);
+  const dotH = zoom;
+  hl.style.display = 'block';
+  hl.style.left   = (col * cw * dotW) + 'px';
+  hl.style.top    = (row * ch * dotH) + 'px';
+  hl.style.width  = (cw * dotW) + 'px';
+  hl.style.height = (ch * dotH) + 'px';
+}
+
+// 選択セルを移動
+function moveSelectedCell(dcol, drow) {
+  if (!selectedCell || mode !== 1) return;
+  const md = MODES[mode];
+  let {col, row} = selectedCell;
+  col += dcol; row += drow;
+  if (col >= md.cols) { col = 0; row++; }
+  if (col < 0) { col = md.cols - 1; row--; }
+  row = Math.max(0, Math.min(md.rows - 1, row));
+  col = Math.max(0, Math.min(md.cols - 1, col));
+  selectedCell = {col, row};
+  updateCharGrid();
+  updateAttrInfo(col, row);
+}
+
+// ═══════════════════════════════════════════════════════
+// 文字パレット (256文字 / 16列×16行 / CGROMビット描画)
+// ═══════════════════════════════════════════════════════
+let charPaletteZoom = 1; // 常に1倍（セルサイズ固定: 8×12px + 1px境界）
+const PALETTE_COLS = 16;
+const PALETTE_ROWS = 16;
+const PALETTE_CELL_W = 9;  // 8dot + 1px border
+const PALETTE_CELL_H = 13; // 12dot + 1px border
+
+function buildCharPalette() {
+  const canvas = document.getElementById('char-palette-canvas');
+  const W = PALETTE_COLS * PALETTE_CELL_W;
+  const H = PALETTE_ROWS * PALETTE_CELL_H;
+  canvas.width  = W;
+  canvas.height = H;
+  const pc = canvas.getContext('2d');
+  const attrByte = selectedCell ? attr[selectedCell.row * MODES[1].cols + selectedCell.col] : 0x24;
+  const cssA = (attrByte >> 1) & 1;
+  const fgColor = cssA ? '#00cc00' : '#ffffff';
+  const bgColor = '#000000';
+  const selCode = selectedCell ? (MODES[1] && data[selectedCell.row * MODES[1].cols + selectedCell.col]) : 0;
+
+  pc.fillStyle = '#080600';
+  pc.fillRect(0, 0, W, H);
+
+  for (let code = 0; code < 256; code++) {
+    const px = (code % PALETTE_COLS) * PALETTE_CELL_W;
+    const py = Math.floor(code / PALETTE_COLS) * PALETTE_CELL_H;
+    // 背景
+    pc.fillStyle = bgColor;
+    pc.fillRect(px, py, 8, 12);
+    // CGROMビット描画
+    const cgBase = code * 16;
+    pc.fillStyle = fgColor;
+    for (let dr = 0; dr < 12; dr++) {
+      const bits = CGROM[cgBase + dr];
+      for (let dc = 0; dc < 8; dc++) {
+        if ((bits >> (7 - dc)) & 1) {
+          pc.fillRect(px + dc, py + dr, 1, 1);
+        }
+      }
+    }
+    // 選択中ハイライト
+    if (code === selCode) {
+      pc.strokeStyle = '#ffb830';
+      pc.lineWidth = 1;
+      pc.strokeRect(px + 0.5, py + 0.5, 8, 12);
+    }
+  }
+}
+
+function initCharPaletteEvents() {
+  const canvas = document.getElementById('char-palette-canvas');
+  canvas.addEventListener('click', e => {
+    if (mode !== 1 || !selectedCell) return;
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * sx;
+    const py = (e.clientY - rect.top) * sy;
+    const col2 = Math.floor(px / PALETTE_CELL_W);
+    const row2 = Math.floor(py / PALETTE_CELL_H);
+    const code = row2 * PALETTE_COLS + col2;
+    if (code < 0 || code > 255) return;
+    // 選択セルに文字コードを書き込み
+    const md = MODES[mode];
+    const idx = selectedCell.row * md.cols + selectedCell.col;
+    pushUndo();
+    data[idx] = code;
+    render();
+    // コード表示更新
+    const label = code >= 0x20 && code < 0x80 ? ` '${String.fromCharCode(code)}'` : '';
+    document.getElementById('char-palette-code').textContent =
+      `0x${code.toString(16).toUpperCase().padStart(2,'0')}${label}`;
+    // カーソル右移動
+    moveSelectedCell(1, 0);
+  });
+
+  canvas.addEventListener('mousemove', e => {
+    const rect = canvas.getBoundingClientRect();
+    const sx = canvas.width / rect.width;
+    const sy = canvas.height / rect.height;
+    const px = (e.clientX - rect.left) * sx;
+    const py = (e.clientY - rect.top) * sy;
+    const col2 = Math.floor(px / PALETTE_CELL_W);
+    const row2 = Math.floor(py / PALETTE_CELL_H);
+    const code = row2 * PALETTE_COLS + col2;
+    if (code >= 0 && code <= 255) {
+      const label = code >= 0x20 && code < 0x80 ? ` '${String.fromCharCode(code)}'` : '';
+      document.getElementById('char-palette-code').textContent =
+        `0x${code.toString(16).toUpperCase().padStart(2,'0')}${label}`;
+    }
+  });
+}
+
+// アトリビュートCSS変更（セル単位）
+function setSelectedCellCSS(cssVal) {
+  if (!selectedCell || mode !== 1) return;
+  const md = MODES[mode];
+  const idx = selectedCell.row * md.cols + selectedCell.col;
+  pushUndo();
+  // CSSビット(bit1)を変更、他ビットは維持
+  if (cssVal === 0) attr[idx] &= ~(1 << 1);
+  else              attr[idx] |=  (1 << 1);
+  render();
+  updateCharGrid();
+}
+// ═══════════════════════════════════════════════════════
+function updateUndoUI() {
+  document.getElementById('sb-undo').textContent =
+    `${undoStack.length}/${MAX_UNDO}` + (redoStack.length ? ` (Redo:${redoStack.length})` : '');
+}
+
+function pushUndo() {
+  undoStack.push({ attr: attr.slice(), data: data.slice(), mode, css });
+  if (undoStack.length > MAX_UNDO) undoStack.shift();
+  redoStack = [];
+  updateUndoUI();
+}
+
+function undo() {
+  if (!undoStack.length) return;
+  redoStack.push({ attr: attr.slice(), data: data.slice(), mode, css });
+  const s = undoStack.pop();
+  attr = s.attr; data = s.data; css = s.css;
+  if (s.mode !== mode) { mode = s.mode; updateModeUI(); resizeCanvases(); }
+  render();
+  updateUndoUI();
+  updateCharGrid();
+}
+
+function redo() {
+  if (!redoStack.length) return;
+  undoStack.push({ attr: attr.slice(), data: data.slice(), mode, css });
+  const s = redoStack.pop();
+  attr = s.attr; data = s.data; css = s.css;
+  if (s.mode !== mode) { mode = s.mode; updateModeUI(); resizeCanvases(); }
+  render();
+  updateUndoUI();
+  updateCharGrid();
+}
+
+// ═══════════════════════════════════════════════════════
+// PNG エクスポート
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-png').addEventListener('click', () => {
+  const md = MODES[mode];
+  const pal = md.getPalette(css);
+  // ベース画像（論理解像度）
+  const base = document.createElement('canvas');
+  base.width = md.dotW;
+  base.height = md.dotH;
+  const bc = base.getContext('2d');
+
+  // 各モードの内容を1px単位で描画
+  if (mode === 3) {
+    for (let y = 0; y < md.dotH; y++) {
+      for (let bx = 0; bx < 32; bx++) {
+        const byte = data[y*32+bx];
+        for (let d = 0; d < 4; d++) {
+          const ci = (byte >> (6-d*2)) & 0x03;
+          bc.fillStyle = pal[ci].rgb;
+          bc.fillRect(bx*4+d, y, 1, 1);
+        }
+      }
+    }
+  } else if (mode === 4) {
+    for (let y = 0; y < md.dotH; y++) {
+      for (let bx = 0; bx < 32; bx++) {
+        const byte = data[y*32+bx];
+        for (let d = 0; d < 8; d++) {
+          const bit = (byte >> (7-d)) & 1;
+          bc.fillStyle = pal[bit].rgb;
+          bc.fillRect(bx*8+d, y, 1, 1);
+        }
+      }
+    }
+  } else if (mode === 5) {
+    for (let y = 0; y < md.dotH; y++) {
+      for (let x = 0; x < md.dotW; x++) {
+        const ci = data[y*md.dotW+x] & 0x0F;
+        bc.fillStyle = (pal[ci] || pal[0]).rgb;
+        bc.fillRect(x, y, 1, 1);
+      }
+    }
+  } else if (mode === 1) {
+    // SCR1: 表示と同じ INV ロジック
+    const cw = md.dotW/md.cols, ch = md.dotH/md.rows;
+    for (let r = 0; r < md.rows; r++) {
+      for (let c = 0; c < md.cols; c++) {
+        const a = attr[r*md.cols+c] || 0;
+        const inv = a & 0x01;
+        const cssA = (a >> 1) & 0x01;
+        const bg = inv ? (cssA ? '#00cc00' : '#ffffff') : '#000000';
+        bc.fillStyle = bg;
+        bc.fillRect(c*cw, r*ch, cw, ch);
+      }
+    }
+  } else if (mode === 2) {
+    for (let r = 0; r < md.rows; r++) {
+      for (let c = 0; c < md.cols; c++) {
+        const byte = data[r*md.cols+c];
+        const colorCode = (byte >> 6) & 0x03;
+        const dots = byte & 0x3F;
+        const color = pal[colorCode+1] || pal[0];
+        for (let dr = 0; dr < 3; dr++) {
+          for (let dc = 0; dc < 2; dc++) {
+            const bitIdx = dr*2+(1-dc);
+            const on = (dots >> bitIdx) & 1;
+            bc.fillStyle = on ? color.rgb : pal[0].rgb;
+            bc.fillRect(c*2+dc, r*3+dr, 1, 1);
+          }
+        }
+      }
+    }
+  }
+
+  // にじみON時はベース画像にコンポジット滲みを適用
+  if (bleedOn) {
+    applyCompositeBleed(bc, base);
+  }
+
+  // 倍率・アスペクト・走査線を反映して最終キャンバスへ
+  const paScale = Math.max(1, Math.round(md.pa || 1));
+  const outW = md.dotW * paScale * pngScale;
+  const rowH = scanlinesOn ? 2 * pngScale : pngScale;
+  const outH = md.dotH * rowH;
+  const exp = document.createElement('canvas');
+  exp.width = outW;
+  exp.height = outH;
+  const ec = exp.getContext('2d');
+  ec.imageSmoothingEnabled = false;
+
+  if (scanlinesOn) {
+    for (let y = 0; y < md.dotH; y++) {
+      const dy = y * rowH;
+      // 明るい行（pngScale分）
+      ec.drawImage(base, 0, y, md.dotW, 1, 0, dy, outW, pngScale);
+      // 暗い走査線行
+      ec.drawImage(base, 0, y, md.dotW, 1, 0, dy + pngScale, outW, pngScale);
+      ec.fillStyle = 'rgba(0,0,0,0.45)';
+      ec.fillRect(0, dy + pngScale, outW, pngScale);
+    }
+  } else {
+    ec.drawImage(base, 0, 0, md.dotW, md.dotH, 0, 0, outW, outH);
+  }
+
+  exp.toBlob(blob => {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    let tag = `_x${pngScale}`;
+    if (bleedOn) tag += '_bleed';
+    if (scanlinesOn) tag += '_scanlines';
+    a.download = `pc6001_screen${mode}_css${css}${tag}.png`;
+    a.click();
+  });
+});
+
+// ═══════════════════════════════════════════════════════
+// ASM エクスポート — 実機VRAM形式
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-asm').addEventListener('click', () => {
+  const md = MODES[mode];
+  const out = [];
+  out.push(`; PC-6001 VRAM Data — ${md.name}`);
+  out.push(`; 出典仕様: https://000.la.coocan.jp/p6/tech.html#vram`);
+  out.push(`; ATTR: ${md.attrSize} bytes (先頭512B) + DATA: ${md.dataSize} bytes`);
+  out.push(`; CSS=${css} (カラーセット${css===0?'1':'2'})`);
+  out.push(`;`);
+
+  // アトリビュート (先頭512B)
+  out.push(`; ── ATTRIBUTE (${md.attrSize} bytes) ──`);
+  out.push(`VRAM_ATTR:`);
+  for (let i = 0; i < md.attrSize; i += 16) {
+    const bytes = [];
+    for (let j = 0; j < 16 && i+j < md.attrSize; j++) {
+      bytes.push('0' + attr[i+j].toString(16).toUpperCase().padStart(2,'0') + 'H');
+    }
+    const col = i % md.cols;
+    const row = Math.floor(i / md.cols);
+    out.push(`    DB  ${bytes.join(', ')}  ; row=${row} col=${col}-${col+bytes.length-1}`);
+  }
+
+  out.push('');
+
+  // データ
+  out.push(`; ── DATA (${md.dataSize} bytes) ──`);
+  if (mode === 1) {
+    out.push(`VRAM_DATA:  ; SCREEN 1 キャラコード 32×16`);
+    for (let row = 0; row < md.rows; row++) {
+      const bytes = [];
+      for (let col = 0; col < md.cols; col++) {
+        bytes.push('0' + data[row*md.cols+col].toString(16).toUpperCase().padStart(2,'0') + 'H');
+      }
+      out.push(`    DB  ${bytes.join(', ')}  ; Y=${row}`);
+    }
+  } else if (mode === 2) {
+    out.push(`VRAM_DATA:  ; SCREEN 2 セミグラフィック 32×16`);
+    out.push(`;           ; bit7-6=カラーコード bit5-0=ドットパターン`);
+    for (let row = 0; row < md.rows; row++) {
+      const bytes = [];
+      for (let col = 0; col < md.cols; col++) {
+        bytes.push('0' + data[row*md.cols+col].toString(16).toUpperCase().padStart(2,'0') + 'H');
+      }
+      out.push(`    DB  ${bytes.join(', ')}  ; Y=${row}`);
+    }
+  } else if (mode === 3) {
+    out.push(`VRAM_DATA:  ; SCREEN 3 128×192 2bit/dot MSB=左`);
+    for (let y = 0; y < md.dotH; y++) {
+      const bytes = [];
+      for (let bx = 0; bx < 32; bx++) {
+        bytes.push('0' + data[y*32+bx].toString(16).toUpperCase().padStart(2,'0') + 'H');
+      }
+      out.push(`    DB  ${bytes.join(', ')}  ; Y=${y}`);
+    }
+  } else if (mode === 4) {
+    out.push(`VRAM_DATA:  ; SCREEN 4 256×192 1bit/dot MSB=左`);
+    for (let y = 0; y < md.dotH; y++) {
+      const bytes = [];
+      for (let bx = 0; bx < 32; bx++) {
+        bytes.push('0' + data[y*32+bx].toString(16).toUpperCase().padStart(2,'0') + 'H');
+      }
+      out.push(`    DB  ${bytes.join(', ')}  ; Y=${y}`);
+    }
+  }
+
+  out.push('');
+  out.push('    END');
+
+  const blob = new Blob([out.join('\n')], {type:'text/plain'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pc6001_screen${mode}_css${css}.asm`;
+  a.click();
+});
+
+// ═══════════════════════════════════════════════════════
+// .p6json / .p6g 保存 / 読込 (互換)
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-p6g-save').addEventListener('click', () => {
+  const obj = {
+    format: 'pc6001-gfx',
+    version: 2,
+    mode, css,
+    attr: Array.from(attr),
+    data: Array.from(data),
+  };
+  const blob = new Blob([JSON.stringify(obj)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `pc6001_screen${mode}_css${css}.p6json`;
+  a.click();
+});
+
+document.getElementById('btn-p6g-load').addEventListener('click', () =>
+  document.getElementById('p6g-input').click());
+
+document.getElementById('p6g-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    let obj;
+    try { obj = JSON.parse(ev.target.result); } catch {
+      alert('p6json 読込エラー: JSON解析失敗');
+      return;
+    }
+    if (obj.format !== 'pc6001-gfx') { alert('p6json 読込エラー: 非対応フォーマット'); return; }
+    if (obj.version !== 2) { alert(`p6json 読込エラー: このファイルはv${obj.version}形式です。v2形式が必要です。`); return; }
+    if (![1,2,3,4,5].includes(obj.mode)) { alert('p6json 読込エラー: mode値不正'); return; }
+    const md = MODES[obj.mode];
+    if (md.attrSize > 0 && (!Array.isArray(obj.attr) || obj.attr.length !== md.attrSize)) { alert('p6json 読込エラー: attr長不正'); return; }
+    if (!Array.isArray(obj.data) || obj.data.length !== md.dataSize) { alert('p6json 読込エラー: data長不正'); return; }
+    if (obj.mode !== mode && !confirm(`SCREEN ${obj.mode} に切り替えて読み込みます。現データは消えます。続けますか？`)) {
+      e.target.value = ''; return;
+    }
+    pushUndo();
+    mode = obj.mode; css = obj.css || 0;
+    attr = new Uint8Array(obj.attr);
+    data = new Uint8Array(obj.data);
+    undoStack = []; redoStack = [];
+    updateModeUI(); resizeCanvases(); render();
+    updateUndoUI();
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ═══════════════════════════════════════════════════════
+// 画像読み込み (SCR3/4のみ実装)
+// ═══════════════════════════════════════════════════════
+document.getElementById('btn-load-img').addEventListener('click', () => {
+  if (mode < 3) { alert('画像読み込みは SCREEN 3 / 4 / mkII15色 のみ対応しています。'); return; }
+  document.getElementById('img-input').click();
+});
+
+document.getElementById('img-input').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const md = MODES[mode];
+    const tmp = document.createElement('canvas');
+    tmp.width = md.dotW; tmp.height = md.dotH;
+    const tc = tmp.getContext('2d');
+    tc.drawImage(img, 0, 0, md.dotW, md.dotH);
+    const imgData = tc.getImageData(0, 0, md.dotW, md.dotH);
+    const pal = md.getPalette(css);
+
+    // 明度優先色選択: RGB→YCbCr変換し明度(Y)を4倍重視
+    // 色よりも明暗の再現を優先し「何が写っているか」を見やすくする
+    function luma(r, g, b) { return 0.299*r + 0.587*g + 0.114*b; }
+    function nearestPal(r, g, b) {
+      const yS = luma(r, g, b);
+      const cbS = b - yS;
+      const crS = r - yS;
+      let best = 0, bestD = Infinity;
+      pal.forEach((c, i) => {
+        const pr = parseInt(c.rgb.slice(1,3),16);
+        const pg = parseInt(c.rgb.slice(3,5),16);
+        const pb = parseInt(c.rgb.slice(5,7),16);
+        const yP = luma(pr, pg, pb);
+        const cbP = pb - yP;
+        const crP = pr - yP;
+        const d = 4*(yS-yP)**2 + (cbS-cbP)**2 + (crS-crP)**2;
+        if (d < bestD) { bestD = d; best = i; }
+      });
+      return best;
+    }
+
+    // ガンマ補正 γ=ユーザー設定（デフォルト0.85）
+    // スライダー値を読み取ってLUTを生成
+    const GAMMA = parseFloat(document.getElementById('gamma-slider').value) / 100;
+    const gammaLUT = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) {
+      gammaLUT[i] = Math.round(255 * Math.pow(i / 255, GAMMA));
+    }
+    function applyGamma(r, g, b) {
+      return [gammaLUT[r], gammaLUT[g], gammaLUT[b]];
+    }
+
+    // Bayer 4×4 ディザ
+    // 控えめなスケール(16)で色の暴れを抑える
+    // 値域: -0.5〜+0.5 × scale → 各チャンネルに加算後クランプ
+    const BAYER4 = [
+       0,  8,  2, 10,
+      12,  4, 14,  6,
+       3, 11,  1,  9,
+      15,  7, 13,  5,
+    ];
+    const BAYER_SCALE = 16; // 控えめ設定（最大±8程度）
+    const useBayer = currentDither === 'bayer';
+
+    function applyBayer(r, g, b, x, y) {
+      if (!useBayer) return [r, g, b];
+      const thresh = BAYER4[(y & 3) * 4 + (x & 3)];
+      const offset = Math.round((thresh / 16 - 0.5) * BAYER_SCALE);
+      return [
+        Math.max(0, Math.min(255, r + offset)),
+        Math.max(0, Math.min(255, g + offset)),
+        Math.max(0, Math.min(255, b + offset)),
+      ];
+    }
+
+    pushUndo();
+    const newData = new Uint8Array(md.dataSize);
+
+    if (mode === 3) {
+      for (let y = 0; y < md.dotH; y++) {
+        for (let bx = 0; bx < 32; bx++) {
+          let byte = 0;
+          for (let d = 0; d < 4; d++) {
+            const x = bx*4+d;
+            const idx = (y*md.dotW+x)*4;
+            const [gr, gg, gb] = applyGamma(imgData.data[idx], imgData.data[idx+1], imgData.data[idx+2]);
+            const [dr, dg, db] = applyBayer(gr, gg, gb, x, y);
+            const ci = nearestPal(dr, dg, db);
+            byte |= (ci & 0x03) << (6-d*2);
+          }
+          newData[y*32+bx] = byte;
+        }
+      }
+    } else if (mode === 4) {
+      for (let y = 0; y < md.dotH; y++) {
+        for (let bx = 0; bx < 32; bx++) {
+          let byte = 0;
+          for (let d = 0; d < 8; d++) {
+            const x = bx*8+d;
+            const idx = (y*md.dotW+x)*4;
+            const [gr, gg, gb] = applyGamma(imgData.data[idx], imgData.data[idx+1], imgData.data[idx+2]);
+            const [dr, dg, db] = applyBayer(gr, gg, gb, x, y);
+            const ci = nearestPal(dr, dg, db);
+            if (ci & 1) byte |= (1 << (7-d));
+          }
+          newData[y*32+bx] = byte;
+        }
+      }
+    } else if (mode === 5) {
+      for (let y = 0; y < md.dotH; y++) {
+        for (let x = 0; x < md.dotW; x++) {
+          const idx = (y * md.dotW + x) * 4;
+          const [gr, gg, gb] = applyGamma(imgData.data[idx], imgData.data[idx+1], imgData.data[idx+2]);
+          const [dr, dg, db] = applyBayer(gr, gg, gb, x, y);
+          newData[y * md.dotW + x] = nearestPal(dr, dg, db) & 0x0F;
+        }
+      }
+    }
+    data = newData;
+    render();
+  };
+  img.src = URL.createObjectURL(file);
+  e.target.value = '';
+});
+
+// ═══════════════════════════════════════════════════════
+// コントロール
+// ═══════════════════════════════════════════════════════
+document.querySelectorAll('.mode-tab').forEach(t => {
+  t.addEventListener('click', () => {
+    if (+t.dataset.mode === mode) return;
+    if (!confirm(`SCREEN ${t.dataset.mode} に切り替えます。現データは消えます。続けますか？`)) return;
+    initMode(+t.dataset.mode);
+  });
+});
+
+document.querySelectorAll('.css-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    css = +b.dataset.css;
+    fillDefaultAttr();
+    document.querySelectorAll('.css-btn').forEach(x => x.classList.toggle('active', +x.dataset.css === css));
+    buildPalette(); updateColorUI(); render();
+  });
+});
+
+document.querySelectorAll('.tool-btn').forEach(b => {
+  b.addEventListener('click', () => {
+    tool = b.dataset.tool;
+    document.querySelectorAll('.tool-btn').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('sb-tool').textContent = tool.toUpperCase();
+  });
+});
+
+document.getElementById('zoom-in').addEventListener('click', () => {
+  if (zoom >= 8) return;
+  zoom++;
+  document.getElementById('zoom-val').textContent = `×${zoom}`;
+  resizeCanvases(); render();
+});
+document.getElementById('zoom-out').addEventListener('click', () => {
+  if (zoom <= 1) return;
+  zoom--;
+  document.getElementById('zoom-val').textContent = `×${zoom}`;
+  resizeCanvases(); render();
+});
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  if (!confirm('全消去しますか？')) return;
+  pushUndo();
+  data = new Uint8Array(MODES[mode].dataSize);
+  fillDefaultAttr();
+  render(); updateCharGrid();
+});
+
+document.getElementById('btn-undo').addEventListener('click', undo);
+document.getElementById('btn-redo').addEventListener('click', redo);
+
+// ガンマスライダー値表示
+document.getElementById('gamma-slider').addEventListener('input', e => {
+  const v = parseInt(e.target.value) / 100;
+  const label = v === 1.0 ? `${v.toFixed(2)} (補正なし)` : v.toFixed(2);
+  document.getElementById('gamma-val').textContent = label;
+});
+
+// ディザ選択
+let currentDither = 'none';
+document.getElementById('btn-dither-none').addEventListener('click', () => {
+  currentDither = 'none';
+  document.getElementById('btn-dither-none').style.borderColor = 'var(--amber)';
+  document.getElementById('btn-dither-none').style.color = 'var(--amber)';
+  document.getElementById('btn-dither-bayer').style.borderColor = '';
+  document.getElementById('btn-dither-bayer').style.color = '';
+});
+document.getElementById('btn-dither-bayer').addEventListener('click', () => {
+  currentDither = 'bayer';
+  document.getElementById('btn-dither-bayer').style.borderColor = 'var(--amber)';
+  document.getElementById('btn-dither-bayer').style.color = 'var(--amber)';
+  document.getElementById('btn-dither-none').style.borderColor = '';
+  document.getElementById('btn-dither-none').style.color = '';
+});
+
+let gridOn = true, attrGridOn = true;
+document.getElementById('btn-stretch').addEventListener('click', () => {
+  stretchMode = !stretchMode;
+  document.getElementById('btn-stretch').textContent = `ストレッチ: ${stretchMode ? 'ON' : 'OFF'}`;
+  document.getElementById('btn-stretch').style.borderColor = stretchMode ? 'var(--amber)' : '';
+  document.getElementById('btn-stretch').style.color = stretchMode ? 'var(--amber)' : '';
+  resizeCanvases();
+  render();
+});
+document.getElementById('btn-scanlines').addEventListener('click', () => {
+  scanlinesOn = !scanlinesOn;
+  document.getElementById('btn-scanlines').textContent = `走査線: ${scanlinesOn ? 'ON' : 'OFF'}`;
+  document.getElementById('btn-scanlines').style.borderColor = scanlinesOn ? 'var(--amber)' : '';
+  document.getElementById('btn-scanlines').style.color = scanlinesOn ? 'var(--amber)' : '';
+  drawGrid();
+});
+document.getElementById('btn-bleed').addEventListener('click', () => {
+  bleedOn = !bleedOn;
+  document.getElementById('btn-bleed').textContent = `にじみ: ${bleedOn ? 'ON' : 'OFF'}`;
+  document.getElementById('btn-bleed').style.borderColor = bleedOn ? 'var(--amber)' : '';
+  document.getElementById('btn-bleed').style.color = bleedOn ? 'var(--amber)' : '';
+  render(); // にじみは本画像に焼き込むため再描画
+});
+document.querySelectorAll('.cbg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    canvasBg = btn.dataset.cbg;
+    document.getElementById('canvas-area').style.background = canvasBg;
+    document.querySelectorAll('.cbg-btn').forEach(b => {
+      b.classList.toggle('active', b === btn);
+      b.style.borderColor = b === btn ? 'var(--amber)' : 'var(--border)';
+    });
+  });
+});
+document.querySelectorAll('.ui-theme-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyUiTheme(btn.dataset.theme));
+});
+[1, 2, 4].forEach(s => {
+  document.getElementById(`btn-png-scale-${s}`).addEventListener('click', () => {
+    pngScale = s;
+    [1, 2, 4].forEach(x => {
+      document.getElementById(`btn-png-scale-${x}`).classList.toggle('active', x === s);
+    });
+  });
+});
+document.getElementById('btn-grid').addEventListener('click', () => {
+  gridOn = !gridOn; showGrid = gridOn;
+  document.getElementById('btn-grid').textContent = `グリッド: ${gridOn?'ON':'OFF'}`;
+  drawGrid();
+});
+document.getElementById('btn-attr-grid').addEventListener('click', () => {
+  attrGridOn = !attrGridOn; showAttrGrid = attrGridOn;
+  document.getElementById('btn-attr-grid').textContent = `属性グリッド: ${attrGridOn?'ON':'OFF'}`;
+  drawGrid();
+});
+
+// ウィンドウリサイズ時もストレッチを再適用
+window.addEventListener('resize', () => {
+  if (stretchMode) { resizeCanvases(); render(); }
+});
+
+document.addEventListener('keydown', e => {
+  // 文字入力フィールドにフォーカス中はショートカットを抑制
+  if (document.activeElement === document.getElementById('char-input')) return;
+  if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); return; }
+  if (e.ctrlKey && (e.key === 'y'||e.key === 'Y')) { e.preventDefault(); redo(); return; }
+  const map = { p:'pen', e:'eraser', f:'fill', c:'fillcheck', l:'line', r:'rect', i:'eyedropper' };
+  const t = (e.shiftKey && e.key.toLowerCase()==='r') ? 'rectfill' : map[e.key.toLowerCase()];
+  if (t) {
+    tool = t;
+    document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool===t));
+    document.getElementById('sb-tool').textContent = t.toUpperCase();
+  }
+});
+
+// ═══════════════════════════════════════════════════════
+// SCREEN 1 文字入力ハンドラ
+// ═══════════════════════════════════════════════════════
+document.getElementById('char-input').addEventListener('keydown', e => {
+  if (mode !== 1 || !selectedCell) return;
+  const md = MODES[mode];
+  const {col, row} = selectedCell;
+  const idx = row * md.cols + col;
+
+  if (e.key === 'ArrowRight') { e.preventDefault(); moveSelectedCell(1, 0); return; }
+  if (e.key === 'ArrowLeft')  { e.preventDefault(); moveSelectedCell(-1, 0); return; }
+  if (e.key === 'ArrowDown')  { e.preventDefault(); moveSelectedCell(0, 1); return; }
+  if (e.key === 'ArrowUp')    { e.preventDefault(); moveSelectedCell(0, -1); return; }
+  if (e.key === 'Backspace') {
+    e.preventDefault();
+    pushUndo();
+    data[idx] = 0x20;
+    render();
+    moveSelectedCell(-1, 0);
+    return;
+  }
+  if (e.key === 'Delete') {
+    e.preventDefault();
+    pushUndo();
+    data[idx] = 0x20;
+    render();
+    updateCharGrid();
+    return;
+  }
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    // 改行: 次の行の先頭へ
+    selectedCell = { col: 0, row: Math.min(selectedCell.row + 1, MODES[mode].rows - 1) };
+    updateCharGrid();
+    updateAttrInfo(selectedCell.col, selectedCell.row);
+    return;
+  }
+  // 通常文字入力
+  if (e.key.length === 1) {
+    const code = e.key.charCodeAt(0);
+    if (code >= 0x20 && code < 0x80) {
+      e.preventDefault();
+      pushUndo();
+      data[idx] = code;
+      render();
+      moveSelectedCell(1, 0);
+    }
+  }
+});
+
+// inputイベントでも補足（モバイル対応）
+document.getElementById('char-input').addEventListener('input', e => {
+  if (mode !== 1 || !selectedCell) return;
+  const val = e.target.value;
+  if (val.length === 0) return;
+  const code = val.charCodeAt(val.length - 1);
+  if (code >= 0x20 && code < 0x80) {
+    const md = MODES[mode];
+    const {col, row} = selectedCell;
+    const idx = row * md.cols + col;
+    pushUndo();
+    data[idx] = code;
+    render();
+    moveSelectedCell(1, 0);
+  }
+  e.target.value = '';
+});
+
+// ←→DELボタン
+document.getElementById('btn-char-left').addEventListener('click',  () => moveSelectedCell(-1, 0));
+document.getElementById('btn-char-right').addEventListener('click', () => moveSelectedCell(1, 0));
+document.getElementById('btn-char-del').addEventListener('click', () => {
+  if (!selectedCell || mode !== 1) return;
+  const md = MODES[mode];
+  const {col, row} = selectedCell;
+  const idx = row * md.cols + col;
+  pushUndo();
+  data[idx] = 0x20;
+  render();
+  updateCharGrid();
+});
+
+// ═══════════════════════════════════════════════════════
+// 起動
+// ═══════════════════════════════════════════════════════
+// アトリビュートCSS変更ボタン
+document.getElementById('btn-attr-css0').addEventListener('click', () => setSelectedCellCSS(0));
+document.getElementById('btn-attr-css1').addEventListener('click', () => setSelectedCellCSS(1));
+
+// 文字パレットイベント初期化
+initCharPaletteEvents();
+
+// ═══════════════════════════════════════════════════════
+// 起動
+// ═══════════════════════════════════════════════════════
+initMode(3);
+</script>
+</body>
+</html>
